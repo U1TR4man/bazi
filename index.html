@@ -179,7 +179,7 @@
 <style>
 :root{
   /* 沿用 ziping-study-v5 的紙色系與字體 */
-  --paper:#f3eee1;--surface:#fcfaf3;--panel:#fbf7ec;--ink:#2a231a;--ink-soft:#877b64;
+  --paper:#f3eee1;--surface:#fcfaf3;--panel:#fbf7ec;--ink:#2a231a;--ink-soft:#6f6455;
   --line:#d7cbb0;--line-soft:#e8e0ca;
   --zhu:#b13a25;--zhu-deep:#8c2c19;--zhu-line:#e0c2ae;--zhu-wash:#f6e9df;
   /* 干支與標題一律用內嵌的宋體子集（ZipingSerif，63 字約 15KB），不靠系統字型碰運氣：
@@ -192,6 +192,10 @@
   --pad:12px;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){
+  *{scroll-behavior:auto !important;transition:none !important;animation:none !important}
+}
 html,body{margin:0;padding:0}
 body{
   background:var(--paper);color:var(--ink);font-family:var(--sans);
@@ -273,7 +277,8 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
 }
 /* 運限欄與原局分開：淡底＋左側界線，一眼看得出哪些是後天加進來的 */
 .chart .tr{background:var(--zhu-wash)}
-.chart .tr.first{border-left:2px solid var(--zhu-line)}
+/* 原局四柱與時運參照分組：一道界線＋較大留白，不再六欄等權 */
+.chart .tr.first{border-left:1px solid var(--line);margin-left:7px}
 .chart .hd.tr{background:none;color:var(--zhu)}
 .chart .lab.tr,.chart .sg.tr{background:none}
 .chart .lab{
@@ -289,19 +294,28 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
 .chart .sg{text-align:center;font-size:clamp(9.5px,calc(var(--cw) * .28),12px);color:var(--ink-soft);padding:2px 0;white-space:nowrap}
 /* 藏干一律頂端對齊。原本用 center，一字（癸正官）會垂直置中、三字（丙庚戊）從頂排，
    各欄第一條就對不上，整排看起來是錯開的。（2026-07-31 使用者回報） */
+/* 藏干不加外框：它是次要資訊，跟天干地支同樣的框會搶注意力（規格 §4.3）。
+   去框後仍靠置頂對齊與固定行高維持橫向齊平。 */
 .chart .cang{
-  background:#fffdf6;border:1px solid var(--line-soft);border-radius:4px;
   display:flex;flex-direction:column;gap:1px;align-items:center;justify-content:flex-start;
-  padding:5px 1px;min-height:56px;
+  padding:6px 1px 2px;min-height:54px;
 }
 .chart .cang span{line-height:1.5}
 .chart .cang.empty{min-height:56px}
 .chart .cang span{font-size:clamp(9px,calc(var(--cw) * .26),11px);white-space:nowrap;letter-spacing:0}
 .chart .cang em{font-family:var(--serif);font-style:normal;font-size:var(--csize);font-weight:500;margin-right:2px}
-.dm{outline:2px solid var(--zhu);outline-offset:-2px}
+/* 日主不再用粗紅框；十神列那格改成小標籤，資訊本來就寫在那裡 */
+.chart .cell.dm{background:#fffaf2;border-color:var(--line)}
+.chart .sg.dm{
+  color:#f9f1e4;background:var(--zhu);border-radius:3px;
+  padding:2px 0;letter-spacing:.06em;
+}
 .wood{color:var(--wood)}.fire{color:var(--fire)}.earth{color:var(--earth)}.metal{color:var(--metal)}.water{color:var(--water)}
-.born{font-size:12.5px;color:var(--ink-soft);line-height:1.75;margin:10px 0 0;padding-top:9px;border-top:1px solid var(--line-soft)}
+.born{font-variant-numeric:tabular-nums;font-feature-settings:"tnum";font-size:12.5px;color:var(--ink-soft);line-height:1.75;margin:10px 0 0;padding-top:9px;border-top:1px solid var(--line-soft)}
 .born b{color:var(--ink);font-weight:500}
+.brow{display:flex;gap:10px;align-items:baseline}
+.brow .bk{flex:0 0 2.6em;color:var(--ink-soft);letter-spacing:.3em}
+.brow .bv{color:var(--ink)}
 .born .bz{font-family:var(--serif);font-size:15px;letter-spacing:.1em}
 /* ── 運限：干上支下、單行排滿、字級依欄數自適應 ──
    用容器查詢單位 cqw 直接量「這一列本身」的寬度，不用 100vw。
@@ -327,21 +341,43 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
 }
 .chip .cg{font-size:clamp(13px,calc(var(--w) * .62),26px);line-height:1.12;font-weight:500;display:block}
 .chip .cs{
-  font-family:var(--sans);font-size:clamp(8.5px,calc(var(--w) * .27),12px);
+  font-family:var(--sans);font-variant-numeric:tabular-nums;font-feature-settings:"tnum";
+  font-size:clamp(8.5px,calc(var(--w) * .27),12px);
   line-height:1.3;color:var(--ink-soft);margin-top:2px;letter-spacing:-.02em;white-space:nowrap;
 }
 /* 流日約 30 格，硬塞一列每格只剩 10px；改成七欄日曆式，一週一列最好認。 */
 .chips.days{--n:7;gap:3px}
 .chips.days .chip{padding:4px 0 3px}
-.chip.on{background:var(--zhu-wash);border-color:var(--zhu);box-shadow:inset 0 0 0 1px var(--zhu)}
-.chip.now{border-color:var(--zhu-line);background:#fdf6ef}
-.chip.on .cs{color:var(--zhu-deep)}
+/* 紅色語義拆分（2026-07-31）：原本硃紅同時代表火五行、日主、選取、今年、標題，
+   五種意思共用一個顏色，看到紅框無法判斷是哪一種。改為：
+     選取 → 深墨色框＋淡墨底（中性、不與五行色打架）
+     今年／今日 → 右上角硃紅小圓點（硃紅只留給「此刻」與品牌）
+     日主 → 十神列的小標籤（字已經寫著「日主」，不必再加粗紅框）
+     火五行 → 只作用在干支字本身 */
+.chip.on{
+  background:rgba(42,35,26,.05);border-color:var(--ink);
+  box-shadow:inset 0 0 0 .5px var(--ink);
+}
+.chip.on .cs{color:var(--ink)}
+.chip.now{position:relative}
+.chip.now::after{
+  content:"";position:absolute;top:3px;right:3px;width:5px;height:5px;
+  border-radius:50%;background:var(--zhu);
+}
 .chip[disabled]{cursor:default}
 .step{margin:12px 0 0;padding-top:10px;border-top:1px solid var(--line-soft)}
+/* 標題不再用「大　運」的全形空格撐字距——那是排版 hack，字距要用 letter-spacing。
+   標題靠左、附註靠右，讓每個區塊的資訊位置固定可預期（規格 §5.1）。 */
 .step h3{
-  font-family:var(--serif);margin:0 0 6px;font-size:14px;font-weight:500;letter-spacing:.16em;color:var(--zhu-deep);
+  font-family:var(--serif);margin:0 0 6px;font-size:14px;font-weight:500;
+  letter-spacing:.32em;color:var(--zhu-deep);
+  display:flex;align-items:baseline;justify-content:space-between;gap:10px;
 }
-.step h3 small{font-family:var(--sans);font-weight:400;color:var(--ink-soft);font-size:11.5px;letter-spacing:0;margin-left:8px}
+.step h3 small{
+  font-family:var(--sans);font-variant-numeric:tabular-nums;font-feature-settings:"tnum";
+  font-weight:400;color:var(--ink-soft);font-size:11.5px;letter-spacing:0;
+  text-align:right;flex:1;min-width:0;
+}
 .err{background:var(--zhu-wash);border:1px solid var(--zhu-line);color:var(--zhu-deep);border-radius:4px;padding:10px 12px;font-size:14px;margin:0 0 12px}
 .cands{margin:10px 0 0;display:flex;flex-direction:column;gap:6px;max-height:260px;overflow:auto}
 .cands button{
@@ -419,19 +455,19 @@ footer{text-align:center;font-size:11.5px;color:var(--ink-soft);padding:16px 6px
 
   <div class="card">
     <div class="step" style="margin:0;padding:0;border:0">
-      <h3>大　運<small id="dayunNote"></small></h3>
+      <h3>大運<small id="dayunNote"></small></h3>
       <div class="chips" id="dayun" style="--n:9"></div>
     </div>
     <div class="step" id="stepYear">
-      <h3>流　年<small id="yearNote"></small></h3>
+      <h3>流年<small id="yearNote"></small></h3>
       <div class="chips" id="liunian" style="--n:10"></div>
     </div>
     <div class="step" id="stepMonth">
-      <h3>流　月<small id="monthNote"></small></h3>
+      <h3>流月<small id="monthNote"></small></h3>
       <div class="chips" id="liuyue" style="--n:12"></div>
     </div>
     <div class="step" id="stepDay">
-      <h3>流　日<small id="dayNote"></small></h3>
+      <h3>流日<small id="dayNote"></small></h3>
       <div class="chips days" id="liuri" style="--n:7"></div>
     </div>
   </div>
@@ -624,9 +660,12 @@ function renderChart(c){
   var dg=c.p.day[0],firstTr=4;
   function trc(x,i){return x[2]?' tr'+(i===firstTr?' first':''):'';}
   var h='<div class="lab"></div>';
-  cols.forEach(function(x,i){h+='<div class="hd'+(x[2]?' tr':'')+'">'+x[0]+'</div>';});
+  cols.forEach(function(x,i){h+='<div class="hd'+trc(x,i)+'">'+x[0]+'</div>';});
   h+='<div class="lab">十神</div>';
-  cols.forEach(function(x,i){h+='<div class="sg'+(x[2]?' tr':'')+'">'+(x[0]==='日柱'?'日主':tenGod(dg,x[1][0]))+'</div>';});
+  cols.forEach(function(x,i){
+    var isDm=x[0]==='日柱';
+    h+='<div class="sg'+(isDm?' dm':'')+trc(x,i)+'">'+(isDm?'日主':tenGod(dg,x[1][0]))+'</div>';
+  });
   h+='<div class="lab">天干</div>';
   cols.forEach(function(x,i){h+='<div class="cell'+(x[0]==='日柱'?' dm':'')+trc(x,i)+'"><div class="g '+wxc(x[1][0])+'">'+x[1][0]+'</div></div>';});
   h+='<div class="lab">地支</div>';
@@ -659,11 +698,13 @@ function currentTransit(){
   return out;
 }
 function renderBorn(c,dy){
+  // label／value 兩欄對齊，label 淡、value 深；數字等寬。比整句散文好掃（規格 §4.4）。
   var t=c.noTime?'時間不詳（時柱與起運僅供參考）':pad2(c.b.h)+':'+pad2(c.b.mi);
-  var s='<div>'+c.b.y+' 年 '+c.b.m+' 月 '+c.b.d+' 日　'+t+'</div>';
+  var row=function(k,v){return '<div class="brow"><span class="bk">'+k+'</span><span class="bv">'+v+'</span></div>';};
+  var s=row('出生',c.b.y+'.'+pad2(c.b.m)+'.'+pad2(c.b.d)+'　'+t);
   if(dy&&dy.qi){
-    s+='<div>起運：出生後 <b>'+dy.qi.years+' 年 '+dy.qi.months+' 個月 '+dy.qi.days+' 天</b>　'
-      +(dy.fwd?'順行':'逆行')+'（距'+termTW(dy.qi.jieName)+'）</div>';
+    s+=row('起運',dy.qi.years+' 年 '+dy.qi.months+' 個月 '+dy.qi.days+' 天後　· 　'
+      +(dy.fwd?'順行':'逆行')+'　· 　距'+termTW(dy.qi.jieName));
   }
   el('born').innerHTML=s;
   el('chartTitle').textContent=gender==='乾'?'乾造':'坤造';
