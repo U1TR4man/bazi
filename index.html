@@ -193,6 +193,13 @@
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+/* 給讀屏用的補充文字。用 aria-label 會「取代」整個可讀名稱——
+   標了「今年」就把可見的干支與年份蓋掉了，讀屏使用者反而聽不到盤面內容。
+   補充語義要用隱藏文字疊加，不是覆蓋。（2026-07-31 第三輪審視指出，屬實） */
+.sr-only{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+  overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
+}
 @media (prefers-reduced-motion:reduce){
   *{scroll-behavior:auto !important;transition:none !important;animation:none !important}
 }
@@ -264,7 +271,13 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
 /* ── 命盤 ── */
 /* 命盤欄數會變（四柱＋選中的大運／流年／流月），字級同樣用 cqw 量自己，
    欄多就自動縮小，不會擠爆。--cn 由 JS 依實際欄數設定。 */
+/* 安全閥：正常情況 grid 的 1fr 欄永不溢出，但若使用者開了系統「文字放大」
+   （只放大字、不放大容器），八欄時字會撐出格子而與鄰欄重疊。
+   給外層一個 overflow-x:auto，極端情況下改為可捲動而不是疊字。
+   我沒有真機可測 OS 層的文字縮放，這是保守的防守，不是實測結論。 */
+.chartwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .chart{
+  min-width:min-content;
   display:grid;gap:3px;font-size:13px;container-type:inline-size;
   --cn:4;
   --cw:calc((100cqw - 2.4em - var(--cn) * 3px) / var(--cn));
@@ -419,20 +432,20 @@ footer{text-align:center;font-size:11.5px;color:var(--ink-soft);padding:16px 6px
   <div class="card">
     <h2>性別</h2>
     <div class="seg" id="segGender">
-      <button type="button" data-g="乾" class="on">男（乾造）</button>
-      <button type="button" data-g="坤">女（坤造）</button>
+      <button type="button" data-g="乾" class="on" aria-pressed="true">男（乾造）</button>
+      <button type="button" data-g="坤" aria-pressed="false">女（坤造）</button>
     </div>
 
     <h2>輸入方式</h2>
     <div class="seg" id="segMode">
-      <button type="button" data-m="date" class="on">用生日</button>
-      <button type="button" data-m="gz">用八字反查</button>
+      <button type="button" data-m="date" class="on" aria-pressed="true">用生日</button>
+      <button type="button" data-m="gz" aria-pressed="false">用八字反查</button>
     </div>
 
     <div id="paneDate">
       <label class="f"><span>快速輸入（西曆數字，例：199101170440 ＝ 1991年1月17日 04:40）</span>
         <input type="text" id="inQuick" inputmode="numeric" autocomplete="off" placeholder="199101170440"></label>
-      <div class="hint" id="quickMsg" style="margin:-8px 0 12px"></div>
+      <div class="hint" id="quickMsg" role="status" aria-live="polite" style="margin:-8px 0 12px"></div>
       <label class="f"><span>出生日期（西曆／陽曆，不是農曆）</span>
         <input type="date" id="inDate" min="1901-01-01" max="2100-12-31"></label>
       <label class="f"><span>出生時間</span>
@@ -452,9 +465,9 @@ footer{text-align:center;font-size:11.5px;color:var(--ink-soft);padding:16px 6px
       <p class="hint">同一組八字每 60 年重複一次，所以要給年份範圍。找到多個時請自行選擇。</p>
     </div>
 
-    <button class="btn" id="btnGo">排　盤</button>
-    <div id="msg"></div>
-    <div class="cands" id="cands"></div>
+    <button class="btn" id="btnGo">排盤</button>
+    <div id="msg" role="alert" aria-live="assertive"></div>
+    <div class="cands" id="cands" aria-live="polite"></div>
   </div>
 
   <footer>可用年份 1901–2100｜時間視為中國標準時間（東八區）鐘錶時間，不做真太陽時校正。<br>本工具離線運作，不會上傳任何資料。排盤結果僅供參考。</footer>
@@ -463,12 +476,12 @@ footer{text-align:center;font-size:11.5px;color:var(--ink-soft);padding:16px 6px
 <!-- ═══ 第二頁：盤面 ═══ -->
 <div class="screen" id="scChart"><div class="wrap">
   <div class="top">
-    <div><h1 id="chartTitle">命盤</h1><div class="sub" id="chartSub"></div></div>
+    <div><h1 id="chartTitle" tabindex="-1">命盤</h1><div class="sub" id="chartSub"></div></div>
     <button class="back" id="btnBack">重新輸入</button>
   </div>
 
   <div class="card">
-    <div class="chart" id="chart"></div>
+    <div class="chartwrap"><div class="chart" id="chart"></div></div>
     <div class="born" id="born"></div>
   </div>
 
@@ -565,12 +578,15 @@ if(!el('inDate').value)el('inDate').value='1990-01-01';
 el('segGender').addEventListener('click',function(e){
   var b=e.target.closest('button');if(!b)return;
   gender=b.dataset.g;
-  this.querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b);});
+  // 視覺 class 與程式狀態必須同步更新，否則讀屏使用者看不到目前選了哪個。
+  this.querySelectorAll('button').forEach(function(x){
+    var on=x===b;x.classList.toggle('on',on);x.setAttribute('aria-pressed',on);});
 });
 el('segMode').addEventListener('click',function(e){
   var b=e.target.closest('button');if(!b)return;
   mode=b.dataset.m;
-  this.querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b);});
+  this.querySelectorAll('button').forEach(function(x){
+    var on=x===b;x.classList.toggle('on',on);x.setAttribute('aria-pressed',on);});
   el('paneDate').hidden=mode!=='date';
   el('paneGz').hidden=mode!=='gz';
   el('cands').innerHTML='';el('msg').innerHTML='';
@@ -614,6 +630,10 @@ el('btnBack').addEventListener('click',function(){showScreen('scInput');});
 function showScreen(id){
   ['scInput','scChart'].forEach(function(x){el(x).classList.toggle('on',x===id);});
   window.scrollTo(0,0);
+  // 切頁後焦點若留在已隱藏的按鈕上，鍵盤使用者會迷路、讀屏也不會宣布換頁。
+  // 把焦點交給新頁的起點。（2026-07-31 第三輪審視）
+  var focus=id==='scChart'?el('chartTitle'):el('inQuick');
+  if(focus&&focus.focus)try{focus.focus({preventScroll:true});}catch(e){focus.focus();}
 }
 
 /* ── 起運與大運 ── */
@@ -746,8 +766,9 @@ function renderDayun(){
   el('dayun').innerHTML=dayunList.map(function(d,i){
     var now=NOW_YEAR>=d.from&&NOW_YEAR<=d.to;
     return '<button type="button" class="chip'+(i===selDayun?' on':'')+(now?' now':'')+'" data-dy="'+i+'"'
-      +' aria-selected="'+(i===selDayun)+'"'+(now?' title="目前大運" aria-label="'+d.gz+'　目前大運"':'')+'>'
-      +stackGZ(d.gz)+'<span class="cs">'+d.age+'歲</span></button>';
+      +' aria-pressed="'+(i===selDayun)+'"'+(now?' title="目前大運"':'')+'>'
+      +stackGZ(d.gz)+'<span class="cs">'+d.age+'歲</span>'
+      +(now?'<span class="sr-only">目前大運</span>':'')+'</button>';
   }).join('');
   el('dayunNote').textContent=dayunList.length?(dayunList[0].age+' 歲起運'):'';
 }
@@ -757,8 +778,9 @@ function renderLiunian(){
   for(var i=0;i<10;i++){
     var y=d.from+i;
     out+='<button type="button" class="chip'+(y===selYear?' on':'')+(y===NOW_YEAR?' now':'')+'" data-ln="'+y+'"'
-      +' aria-selected="'+(y===selYear)+'"'+(y===NOW_YEAR?' title="今年" aria-label="'+y+' 年　今年"':'')+'>'
-      +stackGZ(yearGZ(y))+'<span class="cs">'+String(y).slice(2)+'</span></button>';
+      +' aria-pressed="'+(y===selYear)+'"'+(y===NOW_YEAR?' title="今年"':'')+'>'
+      +stackGZ(yearGZ(y))+'<span class="cs">'+String(y).slice(2)+'</span>'
+      +(y===NOW_YEAR?'<span class="sr-only">今年</span>':'')+'</button>';
   }
   el('liunian').innerHTML=out;
   el('yearNote').textContent=d.gz+'運　'+d.from+'–'+d.to;
@@ -776,8 +798,9 @@ function renderLiuyue(){
   }
   el('liuyue').innerHTML=ms.map(function(m,i){
     return '<button type="button" class="chip'+(i===selMonth?' on':'')+(i===nowIdx?' now':'')+'" data-ly="'+i+'"'
-      +' aria-selected="'+(i===selMonth)+'"'+(i===nowIdx?' title="本月" aria-label="'+m.gz+'　本月"':'')+'>'
-      +stackGZ(m.gz)+'<span class="cs">'+m.m+'/'+m.d+'</span></button>';
+      +' aria-pressed="'+(i===selMonth)+'"'+(i===nowIdx?' title="本月"':'')+'>'
+      +stackGZ(m.gz)+'<span class="cs">'+m.m+'/'+m.d+'</span>'
+      +(i===nowIdx?'<span class="sr-only">本月</span>':'')+'</button>';
   }).join('');
   el('monthNote').textContent=selYear+' 年 '+yearGZ(selYear)+'　自立春起算';
 }
@@ -791,8 +814,9 @@ function renderLiuri(){
   box.innerHTML=ds.map(function(x,i){
     var isToday=(x.y===ty&&x.m===tm&&x.d===td);
     return '<button type="button" class="chip'+(i===selDay?' on':'')+(isToday?' now':'')+'" data-lr="'+i+'"'
-      +' aria-selected="'+(i===selDay)+'"'+(isToday?' title="今日" aria-label="'+x.gz+'　今日"':'')+'>'
-      +stackGZ(x.gz)+'<span class="cs">'+x.m+'/'+x.d+'</span></button>';
+      +' aria-pressed="'+(i===selDay)+'"'+(isToday?' title="今日"':'')+'>'
+      +stackGZ(x.gz)+'<span class="cs">'+x.m+'/'+x.d+'</span>'
+      +(isToday?'<span class="sr-only">今日</span>':'')+'</button>';
   }).join('');
   note.textContent=ds.length?(ds[0].m+'/'+ds[0].d+'–'+ds[ds.length-1].m+'/'+ds[ds.length-1].d+'　共 '+ds.length+' 天'):'';
 }
