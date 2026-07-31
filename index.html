@@ -623,7 +623,11 @@ function calcQiYun(b,fwd){
   var mins=Cal.minutesBetween({y:b.y,m:b.m,d:b.d,h:b.h,mi:b.mi,s:0},jie);
   var td=mins/1440,tm=td*4,w=Math.floor(tm),e=Math.round((tm-w)*30);
   if(e>=30){w+=1;e-=30;}
-  return {jieName:jie.name,years:Math.floor(w/12),months:w%12,days:e,exact:td/3};
+  // 一併回傳「距節氣多遠」。起運＝三日折一歲，這個距離就是算料；
+  // 只寫「距立春」而不寫距多少，等於給了單位沒給數字，看的人無從核對。
+  return {jieName:jie.name,years:Math.floor(w/12),months:w%12,days:e,exact:td/3,
+          gapDays:Math.floor(mins/1440),gapHours:Math.floor((mins%1440)/60),
+          jieDate:pad2(jie.m)+'.'+pad2(jie.d)};
 }
 function buildDayun(c){
   var yangYear=STEMS[c.p.year[0]].yin===false;
@@ -729,7 +733,10 @@ function renderBorn(c,dy){
   var s=row('出生',c.b.y+'.'+pad2(c.b.m)+'.'+pad2(c.b.d)+'　'+t);
   if(dy&&dy.qi){
     s+=row('起運',dy.qi.years+' 年 '+dy.qi.months+' 個月 '+dy.qi.days+' 天後　· 　'
-      +(dy.fwd?'順行':'逆行')+'　· 　距'+termTW(dy.qi.jieName));
+      +(dy.fwd?'順行':'逆行'));
+    // 續行的 label 留空即可（.bk 有固定寬度會撐出對齊），不要用全形空格假裝。
+    s+=row('',['距'+termTW(dy.qi.jieName)+'（'+dy.qi.jieDate+'）',
+               dy.qi.gapDays+' 天 '+dy.qi.gapHours+' 時'].join('　'));
   }
   el('born').innerHTML=s;
   el('chartTitle').textContent=gender==='乾'?'乾造':'坤造';
