@@ -181,7 +181,7 @@
   /* 沿用 ziping-study-v5 的紙色系與字體 */
   --paper:#f3eee1;--surface:#fcfaf3;--panel:#fbf7ec;--ink:#2a231a;--ink-soft:#6f6455;
   --line:#d7cbb0;--line-soft:#e8e0ca;
-  --zhu:#b13a25;--zhu-deep:#8c2c19;--zhu-line:#e0c2ae;--zhu-wash:#f6e9df;
+  --zhu:#b13a25;--zhu-deep:#8c2c19;--ink-sel:#3f382f;--zhu-line:#e0c2ae;--zhu-wash:#f6e9df;
   /* 干支與標題一律用內嵌的宋體子集（ZipingSerif，63 字約 15KB），不靠系統字型碰運氣：
      iOS 有 Songti TC、Android 多半沒有、Linux 可能全無，一旦 fallback 到 generic serif，
      CJK 在多數系統會退回黑體，整個氣質就跑掉。後面的系統字型只是保險。
@@ -280,6 +280,11 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
 /* 原局四柱與時運參照分組：一道界線＋較大留白，不再六欄等權 */
 .chart .tr.first{border-left:1px solid var(--line);margin-left:7px}
 .chart .hd.tr{background:none;color:var(--zhu)}
+.chart .grp{
+  font-family:var(--sans);font-size:11px;letter-spacing:.34em;text-indent:.34em;
+  color:var(--ink-soft);text-align:center;padding:0 0 3px;
+}
+.chart .grp.tr{background:none;border-left-color:transparent}
 .chart .lab.tr,.chart .sg.tr{background:none}
 .chart .lab{
   font-family:var(--serif);font-size:12px;letter-spacing:.14em;color:var(--ink-soft);
@@ -306,9 +311,15 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
 .chart .cang em{font-family:var(--serif);font-style:normal;font-size:var(--csize);font-weight:500;margin-right:2px}
 /* 日主不再用粗紅框；十神列那格改成小標籤，資訊本來就寫在那裡 */
 .chart .cell.dm{background:#fffaf2;border-color:var(--line)}
-.chart .sg.dm{
-  color:#f9f1e4;background:var(--zhu);border-radius:3px;
-  padding:2px 0;letter-spacing:.06em;
+/* 日主標籤貼合內容寬度即可。撐滿整欄會變成 active tab 的樣子，
+   反而壓過真正該當焦點的日主天干。（2026-07-31 第二輪審視） */
+.chart .sg.dm{padding:0;background:none}
+.chart .sg.dm i{
+  font-style:normal;display:inline-block;color:#f9f1e4;background:var(--zhu);
+  border-radius:3px;line-height:1.35;letter-spacing:.04em;
+  /* 內距隨欄寬縮放。固定 6px 在四欄時剛好，八欄時欄寬只剩 31px，
+     標籤會佔到 99%，又變回「撐滿整欄」的問題。（2026-07-31 實測） */
+  padding:1px clamp(1.5px,calc(var(--cw) * .07),7px);
 }
 .wood{color:var(--wood)}.fire{color:var(--fire)}.earth{color:var(--earth)}.metal{color:var(--metal)}.water{color:var(--water)}
 .born{font-variant-numeric:tabular-nums;font-feature-settings:"tnum";font-size:12.5px;color:var(--ink-soft);line-height:1.75;margin:10px 0 0;padding-top:9px;border-top:1px solid var(--line-soft)}
@@ -348,21 +359,26 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
 /* 流日約 30 格，硬塞一列每格只剩 10px；改成七欄日曆式，一週一列最好認。 */
 .chips.days{--n:7;gap:3px}
 .chips.days .chip{padding:4px 0 3px}
-/* 紅色語義拆分（2026-07-31）：原本硃紅同時代表火五行、日主、選取、今年、標題，
-   五種意思共用一個顏色，看到紅框無法判斷是哪一種。改為：
-     選取 → 深墨色框＋淡墨底（中性、不與五行色打架）
-     今年／今日 → 右上角硃紅小圓點（硃紅只留給「此刻」與品牌）
-     日主 → 十神列的小標籤（字已經寫著「日主」，不必再加粗紅框）
-     火五行 → 只作用在干支字本身 */
+/* 紅色語義拆分（2026-07-31）。原本硃紅同時代表火五行、日主、選取、今年、標題，
+   而且全部用「整格紅框」這一種載體，所以看到紅框無法判斷是哪一種。
+   規則不是「一種顏色只准一個意思」——火五行本來就該是紅字，改不掉也不該改；
+   真正要拆的是**載體**：同樣是紅，用字色、用標籤、用角標，就分得開。
+     火五行 → 干支「字」的顏色
+     日主   → 十神列的小標籤（貼合內容寬度，不佔滿整欄）
+     現在   → 右上角小「今」字（不是純圓點，圓點會被當成通知或未讀）
+     選取   → 深褐墨外框（中性，不與任何五行色打架）*/
 .chip.on{
-  background:rgba(42,35,26,.05);border-color:var(--ink);
-  box-shadow:inset 0 0 0 .5px var(--ink);
+  background:rgba(63,56,47,.06);border:2px solid var(--ink-sel);
+  padding:4px 0 3px;   /* 補回 1px，邊框加粗後高度才不變 */
 }
 .chip.on .cs{color:var(--ink)}
+/* 「現在」用小「今」字而不是純圓點：圓點在手機語彙裡是通知／未讀／錯誤，
+   放在命理格子上會被誤讀。一個字既自解釋又不佔空間。（2026-07-31 第二輪審視） */
 .chip.now{position:relative}
 .chip.now::after{
-  content:"";position:absolute;top:3px;right:3px;width:5px;height:5px;
-  border-radius:50%;background:var(--zhu);
+  content:"今";position:absolute;top:1px;right:2px;
+  font-family:var(--serif);font-size:clamp(7.5px,calc(var(--w) * .24),11px);
+  line-height:1;color:var(--zhu);
 }
 .chip[disabled]{cursor:default}
 .step{margin:12px 0 0;padding-top:10px;border-top:1px solid var(--line-soft)}
@@ -384,7 +400,10 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
   width:100%;text-align:left;padding:11px 12px;font-family:var(--sans);font-size:15px;cursor:pointer;
   background:#fffdf6;border:1px solid var(--line);border-radius:4px;color:var(--ink);
 }
-footer{text-align:center;font-size:11.5px;color:var(--ink-soft);padding:16px 6px 0;line-height:1.85}
+footer{text-align:center;font-size:11.5px;color:var(--ink-soft);padding:16px 6px 0;line-height:2}
+.lgd{display:inline-flex;align-items:center;gap:4px;margin:0 7px;white-space:nowrap}
+.lgd-sel{width:13px;height:13px;border:2px solid var(--ink-sel);border-radius:3px;background:rgba(63,56,47,.06)}
+.lgd-now{font-family:var(--serif);color:var(--zhu);font-size:12px;line-height:1}
 @media (max-width:340px){ :root{--pad:8px} .top h1{font-size:21px} }
 </style>
 </head>
@@ -472,7 +491,9 @@ footer{text-align:center;font-size:11.5px;color:var(--ink-soft);padding:16px 6px
     </div>
   </div>
 
-  <footer>點大運看該十年流年，點流年看該年十二個月。<br>紅框為目前選取，淡框為今年。</footer>
+  <footer>點大運看流年，點流年看流月，點流月看流日；選中的會併進上方命盤。<br>
+  <span class="lgd"><span class="lgd-sel"></span>目前選取</span>
+  <span class="lgd"><span class="lgd-now">今</span>現在（今運／今年／本月／今日）</span></footer>
 </div></div>
 
 <script>
@@ -659,12 +680,16 @@ function renderChart(c){
   if(tr.liuri)cols.push(['流日',tr.liuri,1]);
   var dg=c.p.day[0],firstTr=4;
   function trc(x,i){return x[2]?' tr'+(i===firstTr?' first':''):'';}
-  var h='<div class="lab"></div>';
+  // 分區眉標：讓「固定的原局」與「流動的時運」一眼分得開，比加粗分隔線精緻。
+  var nTr=cols.length-4;
+  var h='<div class="lab"></div><div class="grp" style="grid-column:span 4">原局</div>';
+  if(nTr>0)h+='<div class="grp tr first" style="grid-column:span '+nTr+'">時運</div>';
+  h+='<div class="lab"></div>';
   cols.forEach(function(x,i){h+='<div class="hd'+trc(x,i)+'">'+x[0]+'</div>';});
   h+='<div class="lab">十神</div>';
   cols.forEach(function(x,i){
     var isDm=x[0]==='日柱';
-    h+='<div class="sg'+(isDm?' dm':'')+trc(x,i)+'">'+(isDm?'日主':tenGod(dg,x[1][0]))+'</div>';
+    h+='<div class="sg'+(isDm?' dm':'')+trc(x,i)+'">'+(isDm?'<i>日主</i>':tenGod(dg,x[1][0]))+'</div>';
   });
   h+='<div class="lab">天干</div>';
   cols.forEach(function(x,i){h+='<div class="cell'+(x[0]==='日柱'?' dm':'')+trc(x,i)+'"><div class="g '+wxc(x[1][0])+'">'+x[1][0]+'</div></div>';});
@@ -713,7 +738,8 @@ function renderBorn(c,dy){
 function renderDayun(){
   el('dayun').innerHTML=dayunList.map(function(d,i){
     var now=NOW_YEAR>=d.from&&NOW_YEAR<=d.to;
-    return '<button type="button" class="chip'+(i===selDayun?' on':'')+(now?' now':'')+'" data-dy="'+i+'">'
+    return '<button type="button" class="chip'+(i===selDayun?' on':'')+(now?' now':'')+'" data-dy="'+i+'"'
+      +' aria-selected="'+(i===selDayun)+'"'+(now?' title="目前大運" aria-label="'+d.gz+'　目前大運"':'')+'>'
       +stackGZ(d.gz)+'<span class="cs">'+d.age+'歲</span></button>';
   }).join('');
   el('dayunNote').textContent=dayunList.length?(dayunList[0].age+' 歲起運'):'';
@@ -723,7 +749,8 @@ function renderLiunian(){
   var d=dayunList[selDayun],out='';
   for(var i=0;i<10;i++){
     var y=d.from+i;
-    out+='<button type="button" class="chip'+(y===selYear?' on':'')+(y===NOW_YEAR?' now':'')+'" data-ln="'+y+'">'
+    out+='<button type="button" class="chip'+(y===selYear?' on':'')+(y===NOW_YEAR?' now':'')+'" data-ln="'+y+'"'
+      +' aria-selected="'+(y===selYear)+'"'+(y===NOW_YEAR?' title="今年" aria-label="'+y+' 年　今年"':'')+'>'
       +stackGZ(yearGZ(y))+'<span class="cs">'+String(y).slice(2)+'</span></button>';
   }
   el('liunian').innerHTML=out;
@@ -741,7 +768,8 @@ function renderLiuyue(){
     if(now>=a&&now<b){nowIdx=k;break;}
   }
   el('liuyue').innerHTML=ms.map(function(m,i){
-    return '<button type="button" class="chip'+(i===selMonth?' on':'')+(i===nowIdx?' now':'')+'" data-ly="'+i+'">'
+    return '<button type="button" class="chip'+(i===selMonth?' on':'')+(i===nowIdx?' now':'')+'" data-ly="'+i+'"'
+      +' aria-selected="'+(i===selMonth)+'"'+(i===nowIdx?' title="本月" aria-label="'+m.gz+'　本月"':'')+'>'
       +stackGZ(m.gz)+'<span class="cs">'+m.m+'/'+m.d+'</span></button>';
   }).join('');
   el('monthNote').textContent=selYear+' 年 '+yearGZ(selYear)+'　自立春起算';
@@ -755,7 +783,8 @@ function renderLiuri(){
   var ty=today.getFullYear(),tm=today.getMonth()+1,td=today.getDate();
   box.innerHTML=ds.map(function(x,i){
     var isToday=(x.y===ty&&x.m===tm&&x.d===td);
-    return '<button type="button" class="chip'+(i===selDay?' on':'')+(isToday?' now':'')+'" data-lr="'+i+'">'
+    return '<button type="button" class="chip'+(i===selDay?' on':'')+(isToday?' now':'')+'" data-lr="'+i+'"'
+      +' aria-selected="'+(i===selDay)+'"'+(isToday?' title="今日" aria-label="'+x.gz+'　今日"':'')+'>'
       +stackGZ(x.gz)+'<span class="cs">'+x.m+'/'+x.d+'</span></button>';
   }).join('');
   note.textContent=ds.length?(ds[0].m+'/'+ds[0].d+'–'+ds[ds.length-1].m+'/'+ds[ds.length-1].d+'　共 '+ds.length+' 天'):'';
