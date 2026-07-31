@@ -277,21 +277,32 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
    我沒有真機可測 OS 層的文字縮放，這是保守的防守，不是實測結論。 */
 .chartwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .chart{
-  min-width:min-content;
   display:grid;gap:3px;font-size:13px;container-type:inline-size;
   --cn:4;
   --cw:calc((100cqw - 2.4em - var(--cn) * 3px) / var(--cn));
   --gsize:clamp(17px,calc(var(--cw) * .74),34px);
-  --csize:clamp(11px,calc(var(--cw) * .34),15px);
-  grid-template-columns:2.4em repeat(var(--cn),1fr);
+  /* 八欄時 track≈28.9px，扣掉左右內距只剩 ~26.9px；
+     藏干一行＝干(csize)＋1px＋十神兩字(small)，三者相加必須 ≤26.9px。 */
+  --csize:clamp(9px,calc(var(--cw) * .34),15px);
+  /* minmax(0,…) 是關鍵：grid item 預設 min-width:auto，會以 min-content 撐開 track。
+     藏干「丙比肩」nowrap 需 ~31px，八欄時 track 只有 28.9px，於是整個 grid 被撐寬而溢出。
+     （2026-07-31 實測：340px 溢出 41px、360px 22px、375px 12px、390px 4px） */
+  grid-template-columns:minmax(0,2.4em) repeat(var(--cn),minmax(0,1fr));
 }
 @supports not (container-type:inline-size){
   .chart{--gsize:clamp(17px,7vw,34px);--csize:13px}
 }
 /* 運限欄與原局分開：淡底＋左側界線，一眼看得出哪些是後天加進來的 */
 .chart .tr{background:var(--zhu-wash)}
-/* 原局四柱與時運參照分組：一道界線＋較大留白，不再六欄等權 */
-.chart .tr.first{border-left:1px solid var(--line);margin-left:7px}
+/* 原局／時運分隔畫在 gap 裡，用 pseudo-element——
+   原本用 margin-left:7px + border-left:1px，那 8px 是實打實的 layout 寬度，
+   八欄時直接把 grid 推爆。分隔線不該增加總寬。 */
+.chart .tr.first{position:relative}
+.chart .tr.first::before{
+  content:"";position:absolute;left:-2px;top:0;bottom:0;
+  width:1px;background:var(--line);
+}
+.chart .grp.tr.first::before{display:none}
 .chart .hd.tr{background:none;color:var(--zhu)}
 .chart .grp{
   font-family:var(--sans);font-size:11px;letter-spacing:.34em;text-indent:.34em;
@@ -299,6 +310,7 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
 }
 .chart .grp.tr{background:none;border-left-color:transparent}
 .chart .lab.tr,.chart .sg.tr{background:none}
+.chart>*{min-width:0;box-sizing:border-box}
 .chart .lab{
   font-family:var(--serif);font-size:12px;letter-spacing:.14em;color:var(--ink-soft);
   display:flex;align-items:center;justify-content:flex-end;padding-right:3px;
@@ -320,8 +332,8 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
 }
 .chart .cang span{line-height:1.5}
 .chart .cang.empty{min-height:56px}
-.chart .cang span{font-size:clamp(9px,calc(var(--cw) * .26),11px);white-space:nowrap;letter-spacing:0}
-.chart .cang em{font-family:var(--serif);font-style:normal;font-size:var(--csize);font-weight:500;margin-right:2px}
+.chart .cang span{font-size:clamp(7.5px,calc(var(--cw) * .26),11px);white-space:nowrap;letter-spacing:0}
+.chart .cang em{font-family:var(--serif);font-style:normal;font-size:var(--csize);font-weight:500;margin-right:1px}
 /* 日主不再用粗紅框；十神列那格改成小標籤，資訊本來就寫在那裡 */
 .chart .cell.dm{background:#fffaf2;border-color:var(--line)}
 /* 日主標籤貼合內容寬度即可。撐滿整欄會變成 active tab 的樣子，
