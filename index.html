@@ -245,9 +245,18 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
 .chk input{width:20px;height:20px;margin:0}
 .hint{font-size:12.5px;color:var(--ink-soft);line-height:1.6;margin:6px 0 0}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.gzgrid{display:grid;grid-template-columns:auto 1fr 1fr;gap:8px;align-items:center;margin:0 0 8px}
-.gzgrid>b{font-family:var(--serif);font-size:15px;font-weight:500;color:var(--zhu-deep);letter-spacing:.1em}
-.gzgrid select{font-family:var(--serif);font-size:20px;text-align:center;text-align-last:center}
+/* 反查四柱橫排、干上支下，與命盤同一個視覺結構——
+   輸入時的排列跟看到的結果一致，才不用在腦中轉一次。 */
+.gzgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:0 0 10px}
+.gzcol{display:flex;flex-direction:column;gap:5px}
+.gzcol>b{
+  font-family:var(--serif);font-size:13px;font-weight:500;color:var(--zhu-deep);
+  letter-spacing:.06em;text-align:center;
+}
+.gzcol select{
+  font-family:var(--serif);font-size:22px;text-align:center;text-align-last:center;
+  padding:8px 0;min-height:52px;
+}
 /* ── 命盤 ── */
 /* 命盤欄數會變（四柱＋選中的大運／流年／流月），字級同樣用 cqw 量自己，
    欄多就自動縮小，不會擠爆。--cn 由 JS 依實際欄數設定。 */
@@ -278,11 +287,14 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
 .chart .cell{background:#fffdf6;border:1px solid var(--line-soft);border-radius:4px;text-align:center;padding:5px 1px}
 .chart .g{font-family:var(--serif);font-size:var(--gsize);line-height:1.2;font-weight:500}
 .chart .sg{text-align:center;font-size:clamp(9.5px,calc(var(--cw) * .28),12px);color:var(--ink-soft);padding:2px 0;white-space:nowrap}
+/* 藏干一律頂端對齊。原本用 center，一字（癸正官）會垂直置中、三字（丙庚戊）從頂排，
+   各欄第一條就對不上，整排看起來是錯開的。（2026-07-31 使用者回報） */
 .chart .cang{
   background:#fffdf6;border:1px solid var(--line-soft);border-radius:4px;
-  display:flex;flex-direction:column;gap:1px;align-items:center;justify-content:center;
-  padding:4px 1px;min-height:56px;
+  display:flex;flex-direction:column;gap:1px;align-items:center;justify-content:flex-start;
+  padding:5px 1px;min-height:56px;
 }
+.chart .cang span{line-height:1.5}
 .chart .cang.empty{min-height:56px}
 .chart .cang span{font-size:clamp(9px,calc(var(--cw) * .26),11px);white-space:nowrap;letter-spacing:0}
 .chart .cang em{font-family:var(--serif);font-style:normal;font-size:var(--csize);font-weight:500;margin-right:2px}
@@ -318,6 +330,9 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
   font-family:var(--sans);font-size:clamp(8.5px,calc(var(--w) * .27),12px);
   line-height:1.3;color:var(--ink-soft);margin-top:2px;letter-spacing:-.02em;white-space:nowrap;
 }
+/* 流日約 30 格，硬塞一列每格只剩 10px；改成七欄日曆式，一週一列最好認。 */
+.chips.days{--n:7;gap:3px}
+.chips.days .chip{padding:4px 0 3px}
 .chip.on{background:var(--zhu-wash);border-color:var(--zhu);box-shadow:inset 0 0 0 1px var(--zhu)}
 .chip.now{border-color:var(--zhu-line);background:#fdf6ef}
 .chip.on .cs{color:var(--zhu-deep)}
@@ -415,6 +430,10 @@ footer{text-align:center;font-size:11.5px;color:var(--ink-soft);padding:16px 6px
       <h3>流　月<small id="monthNote"></small></h3>
       <div class="chips" id="liuyue" style="--n:12"></div>
     </div>
+    <div class="step" id="stepDay">
+      <h3>流　日<small id="dayNote"></small></h3>
+      <div class="chips days" id="liuri" style="--n:7"></div>
+    </div>
   </div>
 
   <footer>點大運看該十年流年，點流年看該年十二個月。<br>紅框為目前選取，淡框為今年。</footer>
@@ -468,7 +487,7 @@ function stackGZ(gz){
   return '<span class="cg '+wxc(gz[0])+'">'+gz[0]+'</span><span class="cg '+wxc(gz[1])+'">'+gz[1]+'</span>';
 }
 
-var gender='乾',mode='date',chart=null,dayunList=[],selDayun=-1,selYear=null,selMonth=null;
+var gender='乾',mode='date',chart=null,dayunList=[],selDayun=-1,selYear=null,selMonth=null,selDay=null;
 
 /* ── 輸入初始化 ── */
 HOUR_PICKS.forEach(function(x){
@@ -476,13 +495,13 @@ HOUR_PICKS.forEach(function(x){
   el('inHourBranch').appendChild(o);
 });
 (function(){
-  var names=['年柱','月柱','日柱','時柱'],h='';
+  var names=['年柱','月柱','日柱','時柱'],h='<div class="gzgrid">';
   for(var i=0;i<4;i++){
-    h+='<div class="gzgrid"><b>'+names[i]+'</b>'
+    h+='<div class="gzcol"><b>'+names[i]+'</b>'
       +'<select data-gz="g'+i+'">'+GAN.split('').map(function(g){return '<option>'+g+'</option>';}).join('')+'</select>'
       +'<select data-gz="z'+i+'">'+ZHI.split('').map(function(z){return '<option>'+z+'</option>';}).join('')+'</select></div>';
   }
-  el('gzInputs').innerHTML=h;
+  el('gzInputs').innerHTML=h+'</div>';
 })();
 if(!el('inDate').value)el('inDate').value='1990-01-01';
 
@@ -575,6 +594,23 @@ function buildLiuYue(year){
   return out;
 }
 
+/* 流日：該流月自本節當日起，到下一個節的前一日為止（約 29–32 天）。
+   日柱直接問曆法引擎，不自己算——引擎的 JDN 純算術是全庫共用的真相來源。 */
+function buildLiuRi(year,mIdx){
+  var ms=buildLiuYue(year);if(!ms[mIdx])return [];
+  var a=ms[mIdx],b=ms[mIdx+1];
+  var end;
+  if(b){end=new Date(Date.UTC(b.y,b.m-1,b.d));}
+  else{var nx=buildLiuYue(year+1);end=nx[0]?new Date(Date.UTC(nx[0].y,nx[0].m-1,nx[0].d)):null;}
+  if(!end)return [];
+  var out=[],cur=new Date(Date.UTC(a.y,a.m-1,a.d)),guard=0;
+  while(cur<end&&guard++<40){
+    var y=cur.getUTCFullYear(),m=cur.getUTCMonth()+1,d=cur.getUTCDate();
+    out.push({gz:Cal.pillars(y,m,d,12,0,0).day,y:y,m:m,d:d});
+    cur=new Date(cur.getTime()+86400000);
+  }
+  return out;
+}
 /* ── 渲染 ── */
 // 命盤＝四柱＋（選中的）大運／流年／流月。把運限直接併進同一張表，
 // 才能上下對齊看生克刑沖；分開兩塊看，眼睛要來回跳，等於沒有視覺化。
@@ -584,6 +620,7 @@ function renderChart(c){
   if(tr.dayun)cols.push(['大運',tr.dayun,1]);
   if(tr.liunian)cols.push(['流年',tr.liunian,1]);
   if(tr.liuyue)cols.push(['流月',tr.liuyue,1]);
+  if(tr.liuri)cols.push(['流日',tr.liuri,1]);
   var dg=c.p.day[0],firstTr=4;
   function trc(x,i){return x[2]?' tr'+(i===firstTr?' first':''):'';}
   var h='<div class="lab"></div>';
@@ -606,13 +643,17 @@ function renderChart(c){
 }
 // 目前選中的大運／流年／流月干支；沒選就是 null。
 function currentTransit(){
-  var out={dayun:null,liunian:null,liuyue:null};
+  var out={dayun:null,liunian:null,liuyue:null,liuri:null};
   if(selDayun>=0&&dayunList[selDayun])out.dayun=dayunList[selDayun].gz;
   if(selYear!=null){
     out.liunian=yearGZ(selYear);
     if(selMonth!=null){
       var ms=buildLiuYue(selYear);
       if(ms[selMonth])out.liuyue=ms[selMonth].gz;
+      if(selDay!=null){
+        var ds=buildLiuRi(selYear,selMonth);
+        if(ds[selDay])out.liuri=ds[selDay].gz;
+      }
     }
   }
   return out;
@@ -655,29 +696,49 @@ function renderLiuyue(){
   }).join('');
   el('monthNote').textContent=selYear+' 年 '+yearGZ(selYear)+'　自立春起算';
 }
-function redrawAll(){renderChart(chart);renderDayun();renderLiunian();renderLiuyue();}
+function redrawAll(){renderChart(chart);renderDayun();renderLiunian();renderLiuyue();renderLiuri();}
+function renderLiuri(){
+  var box=el('liuri'),note=el('dayNote');
+  if(selYear==null||selMonth==null){box.innerHTML='';note.textContent='';el('stepDay').hidden=true;return;}
+  el('stepDay').hidden=false;
+  var ds=buildLiuRi(selYear,selMonth),today=new Date();
+  var ty=today.getFullYear(),tm=today.getMonth()+1,td=today.getDate();
+  box.innerHTML=ds.map(function(x,i){
+    var isToday=(x.y===ty&&x.m===tm&&x.d===td);
+    return '<button type="button" class="chip'+(i===selDay?' on':'')+(isToday?' now':'')+'" data-lr="'+i+'">'
+      +stackGZ(x.gz)+'<span class="cs">'+x.m+'/'+x.d+'</span></button>';
+  }).join('');
+  note.textContent=ds.length?(ds[0].m+'/'+ds[0].d+'–'+ds[ds.length-1].m+'/'+ds[ds.length-1].d+'　共 '+ds.length+' 天'):'';
+}
+el('liuri').addEventListener('click',function(e){
+  var b=e.target.closest('[data-lr]');if(!b)return;
+  var i=+b.dataset.lr;
+  selDay=(i===selDay)?null:i;
+  redrawAll();
+});
 el('dayun').addEventListener('click',function(e){
   var b=e.target.closest('[data-dy]');if(!b)return;
   var i=+b.dataset.dy;
   // 再點一次取消，讓使用者可以只看原局。
-  if(i===selDayun){selDayun=-1;selYear=null;selMonth=null;redrawAll();return;}
+  if(i===selDayun){selDayun=-1;selYear=null;selMonth=null;selDay=null;redrawAll();return;}
   selDayun=i;
   var d=dayunList[selDayun];
   // 切換大運時，若今年落在該運內就停在今年，否則停在該運頭一年。
   selYear=(NOW_YEAR>=d.from&&NOW_YEAR<=d.to)?NOW_YEAR:d.from;
-  selMonth=null;
+  selMonth=null;selDay=null;
   redrawAll();
 });
 el('liunian').addEventListener('click',function(e){
   var b=e.target.closest('[data-ln]');if(!b)return;
   var y=+b.dataset.ln;
   if(y===selYear){selMonth=null;}else{selYear=y;selMonth=null;}
+  selDay=null;
   redrawAll();
 });
 el('liuyue').addEventListener('click',function(e){
   var b=e.target.closest('[data-ly]');if(!b)return;
   var i=+b.dataset.ly;
-  selMonth=(i===selMonth)?null:i;
+  selMonth=(i===selMonth)?null:i;selDay=null;
   redrawAll();
 });
 
@@ -700,7 +761,7 @@ function castFromDate(y,m,d,hh,mi,noTime){
   chart={p:{year:p.year,month:p.month,day:p.day,time:p.time},
          b:{y:y,m:m,d:d,h:hh,mi:mi},noTime:!!noTime};
   var dy=buildDayun(chart);
-  dayunList=dy.list;selMonth=null;
+  dayunList=dy.list;selMonth=null;selDay=null;
   focusToday();
   renderBorn(chart,dy);redrawAll();
   showScreen('scChart');
