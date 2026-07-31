@@ -731,8 +731,17 @@ function renderLiunian(){
 }
 function renderLiuyue(){
   if(selYear==null){el('liuyue').innerHTML='';el('monthNote').textContent='';return;}
-  el('liuyue').innerHTML=buildLiuYue(selYear).map(function(m,i){
-    return '<button type="button" class="chip'+(i===selMonth?' on':'')+'" data-ly="'+i+'">'
+  var ms=buildLiuYue(selYear),now=Date.now();
+  // 四層運限都要標「現在」：大運、流年、流日原本都有，只有流月漏了，四層裡缺一層最刺眼。
+  // 命理的月以節氣為界，所以「本月」＝今天落在該節到下一節之間，不是日曆的月份。
+  var nowIdx=-1;
+  for(var k=0;k<ms.length;k++){
+    var a=Date.UTC(ms[k].y,ms[k].m-1,ms[k].d);
+    var b=ms[k+1]?Date.UTC(ms[k+1].y,ms[k+1].m-1,ms[k+1].d):a+32*86400000;
+    if(now>=a&&now<b){nowIdx=k;break;}
+  }
+  el('liuyue').innerHTML=ms.map(function(m,i){
+    return '<button type="button" class="chip'+(i===selMonth?' on':'')+(i===nowIdx?' now':'')+'" data-ly="'+i+'">'
       +stackGZ(m.gz)+'<span class="cs">'+m.m+'/'+m.d+'</span></button>';
   }).join('');
   el('monthNote').textContent=selYear+' 年 '+yearGZ(selYear)+'　自立春起算';
