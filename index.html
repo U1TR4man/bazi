@@ -354,8 +354,14 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
 .chart .cang.empty{min-height:56px}
 .chart .cang span{font-size:clamp(7.5px,calc(var(--cw) * .26),11px);white-space:nowrap;letter-spacing:0}
 .chart .cang em{font-family:var(--serif);font-style:normal;font-size:var(--csize);font-weight:500;margin-right:1px}
-/* 日主不再用粗紅框；十神列那格改成小標籤，資訊本來就寫在那裡 */
-.chart .cell.dm{background:#fffaf2;border-color:var(--line)}
+/* A 案定稿（2026-08-01）：所有干支完全去框、無獨立底色；
+   日主只由十神列的朱紅「日主」標籤識別。
+   先前註解已寫 A 案，實作卻還留著 .cell.dm 的 #fffaf2 淡底＋border-color，
+   等於停在 B 案——日主同時有「淡底」與「朱紅標籤」兩個載體，
+   而淡底又和時運色帶、選取色塊撞在同一種語彙上，看到淡底分不出是哪一種。
+   這裡不留空規則：.chart .cell 本身已是 background:transparent，
+   留一條 background:transparent 的 .cell.dm 只會讓人以為還有作用。
+   保留 .sg.dm（十神列的標籤），那是 A 案唯一的日主載體，不可一併刪。 */
 /* 日主標籤貼合內容寬度即可。撐滿整欄會變成 active tab 的樣子，
    反而壓過真正該當焦點的日主天干。（2026-07-31 第二輪審視） */
 .chart .sg.dm{padding:0;background:none}
@@ -442,7 +448,11 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
 .step{margin:12px 0 0;padding-top:10px;border-top:1px solid var(--line-soft)}
 /* 標題不再用「大　運」的全形空格撐字距——那是排版 hack，字距要用 letter-spacing。
    標題靠左、附註靠右，讓每個區塊的資訊位置固定可預期（規格 §5.1）。 */
-.step h3{
+/* 用 .card .step h2（0,3,0）而不是 .step h2（0,2,0）：後者與第 89 行的 .card h2 同分，
+   而四個 .step 都在 .card 裡面，同分就只能靠「誰寫在後面」決勝。
+   本檔第 189 行已經因為同分靠順序決勝而讓時運色帶整條消失過一次，
+   同一個坑不留第二個。提高特異性後，規則搬到哪裡結果都一樣。（2026-08-01） */
+.card .step h2{
   font-family:var(--serif);margin:0 0 6px;font-size:14px;font-weight:500;
   letter-spacing:.32em;color:var(--zhu-deep);
   display:flex;align-items:baseline;justify-content:space-between;gap:10px;
@@ -495,7 +505,7 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
   content:"今";position:absolute;top:0;right:1px;line-height:1;
   font-size:clamp(6.5px,calc(var(--w) * .2),9px);color:var(--zhu);
 }
-.step h3 small{
+.card .step h2 small{
   font-family:var(--sans);font-variant-numeric:tabular-nums;font-feature-settings:"tnum";
   font-weight:400;color:var(--ink-soft);font-size:11.5px;letter-spacing:0;
   text-align:right;flex:1;min-width:0;
@@ -563,7 +573,7 @@ footer{text-align:center;font-size:11.5px;color:var(--ink-soft);padding:16px 6px
     <div class="cands" id="cands" aria-live="polite"></div>
   </div>
 
-  <footer>可用年份 1901–2100｜時間視為中國標準時間（東八區）鐘錶時間，不做真太陽時校正。<br>本工具離線運作，不會上傳任何資料。排盤結果僅供參考。</footer>
+  <footer>可用年份 1901–2100｜時間視為中國標準時間（東八區）鐘錶時間，不做真太陽時校正。<br>所有排盤計算均在你的裝置內完成；出生資料不會上傳或儲存。排盤結果僅供參考。</footer>
 </div></div>
 
 <!-- ═══ 第二頁：盤面 ═══ -->
@@ -571,7 +581,7 @@ footer{text-align:center;font-size:11.5px;color:var(--ink-soft);padding:16px 6px
   <div class="top">
     <div><h1 id="chartTitle" tabindex="-1">命盤</h1><div class="sub" id="chartSub"></div></div>
     <button class="ord" id="btnOrder" type="button" aria-pressed="false"
-      title="切換四柱排列：年月日時 ↔ 時日月年">年→時</button>
+      title="目前四柱排列：年月日時；按下切換為時日月年">年→時</button>
     <button class="back" id="btnBack">重新輸入</button>
   </div>
 
@@ -582,22 +592,22 @@ footer{text-align:center;font-size:11.5px;color:var(--ink-soft);padding:16px 6px
 
   <div class="card">
     <div class="step" style="margin:0;padding:0;border:0">
-      <h3>大運<small id="dayunNote"></small>
+      <h2>大運<small id="dayunNote"></small>
         <button class="tgl" id="btnGrid" type="button" aria-pressed="false"
-          title="切換流年排法：只看本運（橫排）↔ 全部大運（直排矩陣）">直排</button></h3>
+          title="目前流年排列：本運流年橫排；按下切換為全部大運流年直排矩陣">橫排</button></h2>
       <div class="chips" id="dayun" style="--n:9"></div>
       <div class="ygrid" id="ygrid" hidden></div>
     </div>
     <div class="step" id="stepYear">
-      <h3>流年<small id="yearNote"></small></h3>
+      <h2>流年<small id="yearNote"></small></h2>
       <div class="chips" id="liunian" style="--n:10"></div>
     </div>
     <div class="step" id="stepMonth">
-      <h3>流月<small id="monthNote"></small></h3>
+      <h2>流月<small id="monthNote"></small></h2>
       <div class="chips" id="liuyue" style="--n:12"></div>
     </div>
     <div class="step" id="stepDay">
-      <h3>流日<small id="dayNote"></small></h3>
+      <h2>流日<small id="dayNote"></small></h2>
       <div class="chips days" id="liuri" style="--n:7"></div>
     </div>
   </div>
@@ -628,6 +638,14 @@ var HOUR_PICKS=[['00:00','子時（凌晨 0 點～0 點 59）'],['01:00','丑時
 var NOW_YEAR=new Date().getFullYear();
 
 function el(id){return document.getElementById(id);}
+/* 切換鈕的補充說明用隱藏文字接在可見字後面，不用 aria-label。
+   aria-label 會「取代」整個可讀名稱：可見的是「年→時」，讀屏卻只唸得到
+   「目前四柱排列為…」，語音操作的人喊出看得見的字反而點不到（WCAG 2.5.3）。
+   本檔第 46 行已為盤面格子記過同一個教訓，控制項不該再犯一次。 */
+function srNote(text){
+  var s=document.createElement('span');
+  s.className='sr-only';s.textContent=text;return s;
+}
 function esc(t){return String(t==null?'':t).replace(/[&<>"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m];});}
 function wxc(c){return WXC[(STEMS[c]||BRANCHES[c]||{}).e]||'';}
 function termTW(n){return TERM_TW[n]||n;}
@@ -736,11 +754,16 @@ el('inNoTime').addEventListener('change',function(){
   el('inTime').disabled=this.checked;el('inHourBranch').disabled=this.checked;
 });
 el('btnBack').addEventListener('click',function(){showScreen('scInput');});
+/* 兩個排列鈕統一同一條規則：鈕面文字＝「目前正在用的排列」，不是按下後會變成的排列。
+   混用是最糟的——btnOrder 顯示目前、btnGrid 顯示目標，兩顆長得一樣、位置對稱，
+   使用者無從得知哪顆是哪種讀法，只能每顆各按一次去試。（2026-08-01） */
 function syncOrderBtn(){
   var b=el('btnOrder');
+  var cur=revOrder?'時日月年':'年月日時',nxt=revOrder?'年月日時':'時日月年';
   b.textContent=revOrder?'時→年':'年→時';
+  b.appendChild(srNote('：目前四柱排列為'+cur+'，按下切換為'+nxt));
   b.setAttribute('aria-pressed',revOrder);
-  b.title='目前：'+(revOrder?'時日月年':'年月日時')+'　按此切換為'+(revOrder?'年月日時':'時日月年');
+  b.title='目前四柱排列：'+cur+'；按下切換為'+nxt;
 }
 el('btnOrder').addEventListener('click',function(){
   revOrder=!revOrder;
@@ -931,12 +954,16 @@ el('ygrid').addEventListener('click',function(e){
   else{selDayun=di;selYear=y;selMonth=null;selDay=null;}
   redrawAll();
 });
+/* 原本這顆寫成 yearGrid?'橫排':'直排'，顯示的是「按下後會變成的排列」，
+   與 btnOrder 正好相反。改成與 btnOrder 同一條規則：顯示目前排列。 */
 function syncGridBtn(){
   var b=el('btnGrid');
-  b.textContent=yearGrid?'橫排':'直排';
+  var cur=yearGrid?'全部大運流年直排矩陣':'本運流年橫排',
+      nxt=yearGrid?'本運流年橫排':'全部大運流年直排矩陣';
+  b.textContent=yearGrid?'直排':'橫排';
+  b.appendChild(srNote('：目前流年排列為'+cur+'，按下切換為'+nxt));
   b.setAttribute('aria-pressed',yearGrid);
-  b.title='目前：'+(yearGrid?'全部大運的流年直排矩陣':'只看本運流年橫排')
-    +'　按此切換為'+(yearGrid?'只看本運（橫排）':'全部大運（直排）');
+  b.title='目前流年排列：'+cur+'；按下切換為'+nxt;
 }
 el('btnGrid').addEventListener('click',function(){
   yearGrid=!yearGrid;
