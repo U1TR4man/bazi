@@ -181,7 +181,7 @@
   /* 沿用 ziping-study-v5 的紙色系與字體 */
   --paper:#f3eee1;--surface:#fcfaf3;--panel:#fbf7ec;--ink:#2a231a;--ink-soft:#6f6455;
   --line:#d7cbb0;--line-soft:#e8e0ca;
-  --zhu:#b13a25;--zhu-deep:#8c2c19;--ink-sel:#3f382f;--zhu-line:#e0c2ae;--zhu-wash:#f6e9df;--band:#faf6ee;--band-on:#f2eadb;
+  --zhu:#b13a25;--zhu-deep:#8c2c19;--ink-sel:#3f382f;--zhu-line:#e0c2ae;--zhu-wash:#f6e9df;--band:#faf6ee;
   /* 干支與標題一律用內嵌的宋體子集（ZipingSerif，63 字約 15KB），不靠系統字型碰運氣：
      iOS 有 Songti TC、Android 多半沒有、Linux 可能全無，一旦 fallback 到 generic serif，
      CJK 在多數系統會退回黑體，整個氣質就跑掉。後面的系統字型只是保險。
@@ -367,10 +367,16 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
   padding:1px clamp(1.5px,calc(var(--cw) * .07),7px);
 }
 .wood{color:var(--wood)}.fire{color:var(--fire)}.earth{color:var(--earth)}.metal{color:var(--metal)}.water{color:var(--water)}
-.born{font-variant-numeric:tabular-nums;font-feature-settings:"tnum";font-size:12.5px;color:var(--ink-soft);line-height:1.75;margin:10px 0 0;padding-top:9px;border-top:1px solid var(--line-soft)}
+/* 出生與起運是查核用的補充資訊，不是分析對象——字級與行距都收到最小，
+   讓視線停在上方的干支，需要時再低頭看。 */
+.born{
+  font-variant-numeric:tabular-nums;font-feature-settings:"tnum";
+  font-size:10.5px;color:var(--ink-soft);line-height:1.45;
+  margin:8px 0 0;padding-top:7px;border-top:1px solid var(--line-soft);
+}
 .born b{color:var(--ink);font-weight:500}
-.brow{display:flex;gap:10px;align-items:baseline}
-.brow .bk{flex:0 0 2.6em;color:var(--ink-soft);letter-spacing:.3em}
+.brow{display:flex;gap:8px;align-items:baseline}
+.brow .bk{flex:0 0 2.4em;color:var(--ink-soft);letter-spacing:.22em}
 .brow .bv{color:var(--ink)}
 .born .bz{font-family:var(--serif);font-size:15px;letter-spacing:.1em}
 /* ── 運限：干上支下、單行排滿、字級依欄數自適應 ──
@@ -415,7 +421,7 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
 /* 選取＝填淡色塊，不加粗框。與上方命盤「時運欄」的淡底同一套語言：
    選中的運限在上下兩處都用「一塊淡色」表示，是同一個東西的兩個位置。
    粗黑框在一排格子裡會變成最重的元素，反而蓋過真正該看的干支。 */
-.chip.on{background:var(--band-on)}
+.chip.on{background:var(--band)}
 .chip.on .cs{color:var(--ink)}
 /* 「現在」用小「今」字而不是純圓點：圓點在手機語彙裡是通知／未讀／錯誤，
    放在命理格子上會被誤讀。一個字既自解釋又不佔空間。（2026-07-31 第二輪審視） */
@@ -462,7 +468,7 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
   line-height:1.08;white-space:nowrap;min-width:0;position:relative;
 }
 /* 選取用 outline 不用 border——border 會佔 layout，去框後一選就把整欄擠位移。 */
-.ycell.on{background:var(--band-on)}
+.ycell.on{background:var(--band)}
 /* 每欄頭尾的西元年。極小、淡，只作定位用，不搶干支。 */
 .ylab{
   font-family:var(--sans);font-variant-numeric:tabular-nums;font-feature-settings:"tnum";
@@ -491,7 +497,7 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
 }
 footer{text-align:center;font-size:11.5px;color:var(--ink-soft);padding:16px 6px 0;line-height:2}
 .lgd{display:inline-flex;align-items:center;gap:4px;margin:0 7px;white-space:nowrap}
-.lgd-sel{width:13px;height:13px;border:1px solid var(--line);border-radius:3px;background:var(--band-on)}
+.lgd-sel{width:13px;height:13px;border:1px solid var(--line);border-radius:3px;background:var(--band)}
 .lgd-now{font-family:var(--serif);color:var(--zhu);font-size:12px;line-height:1}
 @media (max-width:340px){ :root{--pad:8px} .top h1{font-size:21px} }
 </style>
