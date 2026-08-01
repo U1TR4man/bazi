@@ -181,7 +181,7 @@
   /* 沿用 ziping-study-v5 的紙色系與字體 */
   --paper:#f3eee1;--surface:#fcfaf3;--panel:#fbf7ec;--ink:#2a231a;--ink-soft:#6f6455;
   --line:#d7cbb0;--line-soft:#e8e0ca;
-  --zhu:#b13a25;--zhu-deep:#8c2c19;--ink-sel:#3f382f;--zhu-line:#e0c2ae;--zhu-wash:#f6e9df;--band:#faf6ee;
+  --zhu:#b13a25;--zhu-deep:#8c2c19;--ink-sel:#3f382f;--zhu-line:#e0c2ae;--zhu-wash:#f6e9df;--band:#faf6ee;--band-on:#f2eadb;
   /* 干支與標題一律用內嵌的宋體子集（ZipingSerif，63 字約 15KB），不靠系統字型碰運氣：
      iOS 有 Songti TC、Android 多半沒有、Linux 可能全無，一旦 fallback 到 generic serif，
      CJK 在多數系統會退回黑體，整個氣質就跑掉。後面的系統字型只是保險。
@@ -412,10 +412,10 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
      日主   → 十神列的小標籤（貼合內容寬度，不佔滿整欄）
      現在   → 右上角小「今」字（不是純圓點，圓點會被當成通知或未讀）
      選取   → 深褐墨外框（中性，不與任何五行色打架）*/
-.chip.on{
-  background:rgba(63,56,47,.06);border:2px solid var(--ink-sel);
-  padding:4px 0 3px;   /* 補回 1px，邊框加粗後高度才不變 */
-}
+/* 選取＝填淡色塊，不加粗框。與上方命盤「時運欄」的淡底同一套語言：
+   選中的運限在上下兩處都用「一塊淡色」表示，是同一個東西的兩個位置。
+   粗黑框在一排格子裡會變成最重的元素，反而蓋過真正該看的干支。 */
+.chip.on{background:var(--band-on)}
 .chip.on .cs{color:var(--ink)}
 /* 「現在」用小「今」字而不是純圓點：圓點在手機語彙裡是通知／未讀／錯誤，
    放在命理格子上會被誤讀。一個字既自解釋又不佔空間。（2026-07-31 第二輪審視） */
@@ -462,15 +462,18 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
   line-height:1.08;white-space:nowrap;min-width:0;position:relative;
 }
 /* 選取用 outline 不用 border——border 會佔 layout，去框後一選就把整欄擠位移。 */
-.ycell.on{background:rgba(63,56,47,.06);outline:2px solid var(--ink-sel);outline-offset:-1px}
+.ycell.on{background:var(--band-on)}
 /* 每欄頭尾的西元年。極小、淡，只作定位用，不搶干支。 */
 .ylab{
   font-family:var(--sans);font-variant-numeric:tabular-nums;font-feature-settings:"tnum";
   font-size:clamp(7.5px,calc(var(--w) * .2),9.5px);color:var(--ink-soft);
-  text-align:center;line-height:1.2;white-space:nowrap;min-width:0;
+  display:block;text-align:center;line-height:1.2;white-space:nowrap;min-width:0;
 }
-.ylab.top{padding-bottom:2px}
-.ylab.bot{padding-top:2px}
+/* 修飾類不可用 top／bot 這種通用詞——頁首的 .top{display:flex} 會一併命中，
+   而 flex 容器不吃 text-align:center，年標就整排靠左了。
+   （2026-08-01：盒子中心量起來對齊，墨水卻偏左 16px，就是這個原因） */
+.ylab-t{padding-bottom:2px}
+.ylab-b{padding-top:2px}
 .ycell.now::after{
   content:"今";position:absolute;top:0;right:1px;line-height:1;
   font-size:clamp(6.5px,calc(var(--w) * .2),9px);color:var(--zhu);
@@ -488,7 +491,7 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
 }
 footer{text-align:center;font-size:11.5px;color:var(--ink-soft);padding:16px 6px 0;line-height:2}
 .lgd{display:inline-flex;align-items:center;gap:4px;margin:0 7px;white-space:nowrap}
-.lgd-sel{width:13px;height:13px;border:2px solid var(--ink-sel);border-radius:3px;background:rgba(63,56,47,.06)}
+.lgd-sel{width:13px;height:13px;border:1px solid var(--line);border-radius:3px;background:var(--band-on)}
 .lgd-now{font-family:var(--serif);color:var(--zhu);font-size:12px;line-height:1}
 @media (max-width:340px){ :root{--pad:8px} .top h1{font-size:21px} }
 </style>
@@ -891,7 +894,7 @@ function renderYearGrid(){
   box.style.gridTemplateRows='repeat(12,auto)';
   var h='';
   dayunList.forEach(function(d,di){
-    h+='<div class="ylab top">'+d.from+'</div>';
+    h+='<div class="ylab ylab-t">'+d.from+'</div>';
     for(var i=0;i<10;i++){
       var y=d.from+i,gz=yearGZ(y),on=(di===selDayun&&y===selYear),now=(y===NOW_YEAR);
       h+='<button type="button" class="ycell'+(on?' on':'')+(now?' now':'')+'"'
@@ -899,7 +902,7 @@ function renderYearGrid(){
         +'<span class="'+wxc(gz[0])+'">'+gz[0]+'</span><span class="'+wxc(gz[1])+'">'+gz[1]+'</span>'
         +(now?'<span class="sr-only">今年</span>':'')+'</button>';
     }
-    h+='<div class="ylab bot">'+d.to+'</div>';
+    h+='<div class="ylab ylab-b">'+d.to+'</div>';
   });
   box.innerHTML=h;
 }
