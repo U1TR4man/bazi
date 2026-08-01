@@ -220,8 +220,17 @@ body{
 }
 .top h1{font-family:var(--serif);font-weight:500;font-size:24px;letter-spacing:.14em;margin:0}
 .top .sub{font-size:12px;color:var(--ink-soft);letter-spacing:.06em}
+/* 排列切換。放在「重新輸入」左邊，同族但更輕：
+   只有想換的人才會注意到，不會跟主要動作搶。標籤直接寫目前排法（年→時／時→年），
+   看得到狀態也看得到按下去會變什麼。 */
+.ord{
+  margin-left:auto;font-family:var(--serif);font-size:13px;letter-spacing:.08em;
+  border:1px solid var(--line);background:transparent;color:var(--ink-soft);
+  border-radius:4px;padding:8px 9px;cursor:pointer;min-height:40px;white-space:nowrap;
+}
+.ord[aria-pressed="true"]{color:var(--zhu-deep);border-color:var(--zhu-line);background:var(--band)}
 .back{
-  margin-left:auto;font-family:var(--sans);font-size:14px;letter-spacing:.06em;
+  margin-left:8px;font-family:var(--sans);font-size:14px;letter-spacing:.06em;
   border:1px solid var(--line);background:var(--surface);color:var(--ink);
   border-radius:4px;padding:9px 14px;cursor:pointer;min-height:40px;
 }
@@ -500,6 +509,8 @@ footer{text-align:center;font-size:11.5px;color:var(--ink-soft);padding:16px 6px
 <div class="screen" id="scChart"><div class="wrap">
   <div class="top">
     <div><h1 id="chartTitle" tabindex="-1">命盤</h1><div class="sub" id="chartSub"></div></div>
+    <button class="ord" id="btnOrder" type="button" aria-pressed="false"
+      title="切換四柱排列：年月日時 ↔ 時日月年">年→時</button>
     <button class="back" id="btnBack">重新輸入</button>
   </div>
 
@@ -580,22 +591,31 @@ function stackGZ(gz){
   return '<span class="cg '+wxc(gz[0])+'">'+gz[0]+'</span><span class="cg '+wxc(gz[1])+'">'+gz[1]+'</span>';
 }
 
-var gender='乾',mode='date',chart=null,dayunList=[],selDayun=-1,selYear=null,selMonth=null,selDay=null;
+// 四柱排法。港式豎排右起讀，攤成橫排就是 時日月年；預設仍為年月日時。
+// 存進 localStorage：偏好這種排法的人每次都要重按太煩，這是本工具唯一寫入的東西。
+var ORDER_KEY='paipan_pillar_order';
+var revOrder=(function(){try{return localStorage.getItem(ORDER_KEY)==='rev';}catch(e){return false;}})();
+var gender='乾',mode='date',chart=null,lastDy=null,dayunList=[],selDayun=-1,selYear=null,selMonth=null,selDay=null;
 
 /* ── 輸入初始化 ── */
 HOUR_PICKS.forEach(function(x){
   var o=document.createElement('option');o.value=x[0];o.textContent=x[1];
   el('inHourBranch').appendChild(o);
 });
-(function(){
-  var names=['年柱','月柱','日柱','時柱'],h='<div class="gzgrid">';
-  for(var i=0;i<4;i++){
-    h+='<div class="gzcol"><b>'+names[i]+'</b>'
+// 反查輸入的排列跟著命盤走——兩邊不一致的話，使用者要在腦中轉一次才對得上。
+// data-p 記住這一欄是第幾柱（0=年…3=時），讀值時照它取，不靠畫面順序。
+function renderGzInputs(){
+  var names=['年柱','月柱','日柱','時柱'],idx=[0,1,2,3];
+  if(revOrder)idx.reverse();
+  var h='<div class="gzgrid">';
+  idx.forEach(function(i){
+    h+='<div class="gzcol" data-p="'+i+'"><b>'+names[i]+'</b>'
       +'<select data-gz="g'+i+'">'+GAN.split('').map(function(g){return '<option>'+g+'</option>';}).join('')+'</select>'
       +'<select data-gz="z'+i+'">'+ZHI.split('').map(function(z){return '<option>'+z+'</option>';}).join('')+'</select></div>';
-  }
+  });
   el('gzInputs').innerHTML=h+'</div>';
-})();
+}
+renderGzInputs();
 if(!el('inDate').value)el('inDate').value='1990-01-01';
 
 el('segGender').addEventListener('click',function(e){
@@ -650,6 +670,19 @@ el('inNoTime').addEventListener('change',function(){
   el('inTime').disabled=this.checked;el('inHourBranch').disabled=this.checked;
 });
 el('btnBack').addEventListener('click',function(){showScreen('scInput');});
+function syncOrderBtn(){
+  var b=el('btnOrder');
+  b.textContent=revOrder?'時→年':'年→時';
+  b.setAttribute('aria-pressed',revOrder);
+  b.title='目前：'+(revOrder?'時日月年':'年月日時')+'　按此切換為'+(revOrder?'年月日時':'時日月年');
+}
+el('btnOrder').addEventListener('click',function(){
+  revOrder=!revOrder;
+  try{localStorage.setItem(ORDER_KEY,revOrder?'rev':'std');}catch(e){}
+  syncOrderBtn();renderGzInputs();
+  if(chart)redrawAll();
+});
+syncOrderBtn();
 function showScreen(id){
   ['scInput','scChart'].forEach(function(x){el(x).classList.toggle('on',x===id);});
   window.scrollTo(0,0);
@@ -720,6 +753,8 @@ function buildLiuRi(year,mIdx){
 // 才能上下對齊看生克刑沖；分開兩塊看，眼睛要來回跳，等於沒有視覺化。
 function renderChart(c){
   var cols=[['年柱',c.p.year,0],['月柱',c.p.month,0],['日柱',c.p.day,0],['時柱',c.p.time,0]];
+  // 只倒原局四柱；大運／流年等仍接在右側自成一組，分區與分隔線邏輯不變。
+  if(revOrder)cols.reverse();
   var tr=currentTransit();
   if(tr.dayun)cols.push(['大運',tr.dayun,1]);
   if(tr.liunian)cols.push(['流年',tr.liunian,1]);
@@ -783,7 +818,9 @@ function renderBorn(c,dy){
   }
   el('born').innerHTML=s;
   el('chartTitle').textContent=gender==='乾'?'乾造':'坤造';
-  el('chartSub').innerHTML='<span class="bz">'+c.p.year+' '+c.p.month+' '+c.p.day+' '+c.p.time+'</span>';
+  var bz=[c.p.year,c.p.month,c.p.day,c.p.time];
+  if(revOrder)bz.reverse();
+  el('chartSub').innerHTML='<span class="bz">'+bz.join(' ')+'</span>';
 }
 function renderDayun(){
   el('dayun').innerHTML=dayunList.map(function(d,i){
@@ -827,7 +864,12 @@ function renderLiuyue(){
   }).join('');
   el('monthNote').textContent=selYear+' 年 '+yearGZ(selYear)+'　自立春起算';
 }
-function redrawAll(){renderChart(chart);renderDayun();renderLiunian();renderLiuyue();renderLiuri();}
+// 副標八字也在 renderBorn 裡，切換排法時必須一起重繪——
+// 否則命盤倒了、上面那行八字還是舊順序，兩處互相打臉。
+function redrawAll(){
+  renderChart(chart);renderBorn(chart,lastDy);
+  renderDayun();renderLiunian();renderLiuyue();renderLiuri();
+}
 function renderLiuri(){
   var box=el('liuri'),note=el('dayNote');
   if(selYear==null||selMonth==null){box.innerHTML='';note.textContent='';el('stepDay').hidden=true;return;}
@@ -894,9 +936,9 @@ function castFromDate(y,m,d,hh,mi,noTime){
   chart={p:{year:p.year,month:p.month,day:p.day,time:p.time},
          b:{y:y,m:m,d:d,h:hh,mi:mi},noTime:!!noTime};
   var dy=buildDayun(chart);
-  dayunList=dy.list;selMonth=null;selDay=null;
+  dayunList=dy.list;selMonth=null;selDay=null;lastDy=dy;
   focusToday();
-  renderBorn(chart,dy);redrawAll();
+  redrawAll();
   showScreen('scChart');
 }
 
@@ -912,8 +954,10 @@ el('btnGo').addEventListener('click',function(){
       if(!noTime){var tp=(el('inTime').value||'12:00').split(':');hh=+tp[0];mi=+tp[1]||0;}
       castFromDate(y,m,d,hh,mi,noTime);
     }else{
-      var sels=el('gzInputs').querySelectorAll('select'),gz=[];
-      for(var i=0;i<4;i++)gz.push(sels[i*2].value+sels[i*2+1].value);
+      // 依 data-gz 取值，不依畫面順序——倒排後 DOM 順序會變，靠位置取會錯柱。
+      var sels=el('gzInputs').querySelectorAll('select'),byKey={},gz=[];
+      for(var k=0;k<sels.length;k++)byKey[sels[k].getAttribute('data-gz')]=sels[k].value;
+      for(var i=0;i<4;i++)gz.push((byKey['g'+i]||'')+(byKey['z'+i]||''));
       for(var j=0;j<4;j++)if(jiaziIndex(gz[j])<0){
         showErr('第 '+(j+1)+' 柱「'+gz[j]+'」不是合法干支（天干與地支的陰陽要相同，例如甲子可以、甲丑不行）。');return;
       }
