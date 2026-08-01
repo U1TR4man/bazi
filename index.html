@@ -376,7 +376,14 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
 }
 .born b{color:var(--ink);font-weight:500}
 .brow{display:flex;gap:8px;align-items:baseline}
-.brow .bk{flex:0 0 2.4em;color:var(--ink-soft);letter-spacing:.22em}
+/* 標籤欄一律 nowrap。字級縮小後 2.4em 塞不下「出生」兩字加字距，
+   標籤會各自折成兩行，整塊反而變高——縮字級時忘了同步檢查標籤欄寬。
+   （2026-08-01 使用者回報「越改越闊」）
+   basis 給到 3.2em 是留餘裕；就算日後再縮字級也不會再折。 */
+.brow .bk{
+  flex:0 0 3.2em;color:var(--ink-soft);letter-spacing:.18em;
+  white-space:nowrap;
+}
 .brow .bv{color:var(--ink)}
 .born .bz{font-family:var(--serif);font-size:15px;letter-spacing:.1em}
 /* ── 運限：干上支下、單行排滿、字級依欄數自適應 ──
