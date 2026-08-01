@@ -451,13 +451,24 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
   --n:9;--w:calc((100cqw - (var(--n) - 1) * 2px) / var(--n));
   grid-template-columns:repeat(var(--n),minmax(0,1fr));
 }
+/* 矩陣去框，跟上方命盤同一套語言：這裡是通覽用的閱讀區，
+   90 個框只會變成網格噪音。秩序靠欄軌與行距維持，不靠線。 */
 .ycell{
-  background:#fffdf6;border:1px solid var(--line-soft);border-radius:3px;
+  background:transparent;border:0;border-radius:3px;
   padding:3px 0;text-align:center;cursor:pointer;color:var(--ink);
   font-family:var(--serif);font-size:clamp(10px,calc(var(--w) * .46),18px);
   line-height:1.3;white-space:nowrap;min-width:0;position:relative;
 }
-.ycell.on{background:rgba(63,56,47,.06);border:2px solid var(--ink-sel);padding:2px 0}
+/* 選取用 outline 不用 border——border 會佔 layout，去框後一選就把整欄擠位移。 */
+.ycell.on{background:rgba(63,56,47,.06);outline:2px solid var(--ink-sel);outline-offset:-1px}
+/* 每欄頭尾的西元年。極小、淡，只作定位用，不搶干支。 */
+.ylab{
+  font-family:var(--sans);font-variant-numeric:tabular-nums;font-feature-settings:"tnum";
+  font-size:clamp(7.5px,calc(var(--w) * .26),10px);color:var(--ink-soft);
+  text-align:center;line-height:1.4;white-space:nowrap;min-width:0;
+}
+.ylab.top{padding-bottom:1px}
+.ylab.bot{padding-top:1px}
 .ycell.now::after{
   content:"今";position:absolute;top:0;right:1px;line-height:1;
   font-size:clamp(6.5px,calc(var(--w) * .2),9px);color:var(--zhu);
@@ -873,9 +884,12 @@ function renderYearGrid(){
   el('stepYear').hidden=yearGrid;      // 矩陣已含全部流年，橫排那條就多餘了
   if(!yearGrid||!dayunList.length){box.innerHTML='';return;}
   box.style.setProperty('--n',dayunList.length);
-  box.style.gridTemplateRows='repeat(10,auto)';
+  // 12 列＝起年＋十個流年＋止年。頭尾標年份，中間不標，
+  // 這樣不用數格子也知道落在哪一年（同紙本命書的「始於／止於」）。
+  box.style.gridTemplateRows='repeat(12,auto)';
   var h='';
   dayunList.forEach(function(d,di){
+    h+='<div class="ylab top">'+d.from+'</div>';
     for(var i=0;i<10;i++){
       var y=d.from+i,gz=yearGZ(y),on=(di===selDayun&&y===selYear),now=(y===NOW_YEAR);
       h+='<button type="button" class="ycell'+(on?' on':'')+(now?' now':'')+'"'
@@ -883,6 +897,7 @@ function renderYearGrid(){
         +'<span class="'+wxc(gz[0])+'">'+gz[0]+'</span><span class="'+wxc(gz[1])+'">'+gz[1]+'</span>'
         +(now?'<span class="sr-only">今年</span>':'')+'</button>';
     }
+    h+='<div class="ylab bot">'+d.to+'</div>';
   });
   box.innerHTML=h;
 }
