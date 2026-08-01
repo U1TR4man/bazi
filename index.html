@@ -376,7 +376,12 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
    （2026-07-31：這種同分靠順序決勝的坑，靜態檢查看不出來，只有實跑才知道） */
 .chart .tr,.chart .sg.tr,.chart .hd.tr{background:var(--band);box-shadow:0 0 0 1.5px var(--band)}
 .chart .g{font-family:var(--serif);font-size:var(--gsize);line-height:1.2;font-weight:500}
-.chart .sg{text-align:center;font-size:clamp(9.5px,calc(var(--cw) * .28),12px);color:var(--ink-soft);padding:2px 0;white-space:nowrap}
+/* 十神用宋體（2026-08-01）。它是命理語義詞、不是說明文字，和干支同屬「要讀的內容」，
+   本來就該同一套字；原本繼承 body 的黑體是漏掉，不是決定。
+   CJK 在宋體與黑體都是全形等寬，實測墨水寬完全相同（傷官 24px、戊正印 38px），
+   340／375px 八欄零溢出，所以這是純換字體、不動版面的改動。
+   .sg.dm i（日主標籤）一併繼承宋體，與規格 §4.2 一致。 */
+.chart .sg{font-family:var(--serif);text-align:center;font-size:clamp(9.5px,calc(var(--cw) * .28),12px);color:var(--ink-soft);padding:2px 0;white-space:nowrap}
 /* 藏干一律頂端對齊。原本用 center，一字（癸正官）會垂直置中、三字（丙庚戊）從頂排，
    各欄第一條就對不上，整排看起來是錯開的。（2026-07-31 使用者回報） */
 /* 藏干不加外框：它是次要資訊，跟天干地支同樣的框會搶注意力（規格 §4.3）。
@@ -387,7 +392,9 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
 }
 .chart .cang span{line-height:1.5}
 .chart .cang.empty{min-height:56px}
-.chart .cang span{font-size:clamp(7.5px,calc(var(--cw) * .26),11px);white-space:nowrap;letter-spacing:0}
+/* 藏干的十神同理。原本只有 em（干）是宋體、後面的十神是黑體，
+   同一行兩種字反而顯得散——那是規則沒寫全，不是刻意的對比。 */
+.chart .cang span{font-family:var(--serif);font-size:clamp(7.5px,calc(var(--cw) * .26),11px);white-space:nowrap;letter-spacing:0}
 .chart .cang em{font-family:var(--serif);font-style:normal;font-size:var(--csize);font-weight:500;margin-right:1px}
 /* A 案定稿（2026-08-01）：所有干支完全去框、無獨立底色；
    日主只由十神列的朱紅「日主」標籤識別。
