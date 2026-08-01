@@ -447,28 +447,30 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
    欄數與大運同步（--n），字級一樣用 cqw 量自己。 */
 .ygrid{
   display:grid;grid-auto-flow:column;grid-template-rows:repeat(10,auto);
-  gap:2px;margin-top:6px;container-type:inline-size;
+  /* 欄距維持 2px 與大運同步（改了就對不齊）；列距歸零，
+     讓每欄收成一條緊密的直帶——左右分野靠列距壓縮做出來，不是靠加大欄距。 */
+  column-gap:2px;row-gap:0;margin-top:6px;container-type:inline-size;
   --n:9;--w:calc((100cqw - (var(--n) - 1) * 2px) / var(--n));
   grid-template-columns:repeat(var(--n),minmax(0,1fr));
 }
 /* 矩陣去框，跟上方命盤同一套語言：這裡是通覽用的閱讀區，
    90 個框只會變成網格噪音。秩序靠欄軌與行距維持，不靠線。 */
 .ycell{
-  background:transparent;border:0;border-radius:3px;
-  padding:3px 0;text-align:center;cursor:pointer;color:var(--ink);
-  font-family:var(--serif);font-size:clamp(10px,calc(var(--w) * .46),18px);
-  line-height:1.3;white-space:nowrap;min-width:0;position:relative;
+  background:transparent;border:0;border-radius:2px;
+  padding:1px 0;text-align:center;cursor:pointer;color:var(--ink);
+  font-family:var(--serif);font-size:clamp(9px,calc(var(--w) * .32),14px);
+  line-height:1.08;white-space:nowrap;min-width:0;position:relative;
 }
 /* 選取用 outline 不用 border——border 會佔 layout，去框後一選就把整欄擠位移。 */
 .ycell.on{background:rgba(63,56,47,.06);outline:2px solid var(--ink-sel);outline-offset:-1px}
 /* 每欄頭尾的西元年。極小、淡，只作定位用，不搶干支。 */
 .ylab{
   font-family:var(--sans);font-variant-numeric:tabular-nums;font-feature-settings:"tnum";
-  font-size:clamp(7.5px,calc(var(--w) * .26),10px);color:var(--ink-soft);
-  text-align:center;line-height:1.4;white-space:nowrap;min-width:0;
+  font-size:clamp(7.5px,calc(var(--w) * .2),9.5px);color:var(--ink-soft);
+  text-align:center;line-height:1.2;white-space:nowrap;min-width:0;
 }
-.ylab.top{padding-bottom:1px}
-.ylab.bot{padding-top:1px}
+.ylab.top{padding-bottom:2px}
+.ylab.bot{padding-top:2px}
 .ycell.now::after{
   content:"今";position:absolute;top:0;right:1px;line-height:1;
   font-size:clamp(6.5px,calc(var(--w) * .2),9px);color:var(--zhu);
