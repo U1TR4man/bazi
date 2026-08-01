@@ -434,6 +434,34 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
   letter-spacing:.32em;color:var(--zhu-deep);
   display:flex;align-items:baseline;justify-content:space-between;gap:10px;
 }
+/* 流年排法切換。放在「大運」標題列右端，比 small 註記再輕一階——
+   它是排版偏好不是主要操作，不該搶戲。 */
+.tgl{
+  flex:0 0 auto;font-family:var(--sans);font-size:11px;letter-spacing:.06em;
+  border:1px solid var(--line);background:transparent;color:var(--ink-soft);
+  border-radius:3px;padding:3px 7px;cursor:pointer;margin-left:8px;
+}
+.tgl[aria-pressed="true"]{color:var(--zhu-deep);border-color:var(--zhu-line);background:var(--band)}
+/* 矩陣：每步大運一欄，欄內直排它那十年。grid-auto-flow:column 正好是
+   「填滿一欄再換下一欄」，跟資料的分組順序一致，不用自己算索引。
+   欄數與大運同步（--n），字級一樣用 cqw 量自己。 */
+.ygrid{
+  display:grid;grid-auto-flow:column;grid-template-rows:repeat(10,auto);
+  gap:2px;margin-top:6px;container-type:inline-size;
+  --n:9;--w:calc((100cqw - (var(--n) - 1) * 2px) / var(--n));
+  grid-template-columns:repeat(var(--n),minmax(0,1fr));
+}
+.ycell{
+  background:#fffdf6;border:1px solid var(--line-soft);border-radius:3px;
+  padding:3px 0;text-align:center;cursor:pointer;color:var(--ink);
+  font-family:var(--serif);font-size:clamp(10px,calc(var(--w) * .46),18px);
+  line-height:1.3;white-space:nowrap;min-width:0;position:relative;
+}
+.ycell.on{background:rgba(63,56,47,.06);border:2px solid var(--ink-sel);padding:2px 0}
+.ycell.now::after{
+  content:"今";position:absolute;top:0;right:1px;line-height:1;
+  font-size:clamp(6.5px,calc(var(--w) * .2),9px);color:var(--zhu);
+}
 .step h3 small{
   font-family:var(--sans);font-variant-numeric:tabular-nums;font-feature-settings:"tnum";
   font-weight:400;color:var(--ink-soft);font-size:11.5px;letter-spacing:0;
@@ -521,8 +549,11 @@ footer{text-align:center;font-size:11.5px;color:var(--ink-soft);padding:16px 6px
 
   <div class="card">
     <div class="step" style="margin:0;padding:0;border:0">
-      <h3>大運<small id="dayunNote"></small></h3>
+      <h3>大運<small id="dayunNote"></small>
+        <button class="tgl" id="btnGrid" type="button" aria-pressed="false"
+          title="切換流年排法：只看本運（橫排）↔ 全部大運（直排矩陣）">直排</button></h3>
       <div class="chips" id="dayun" style="--n:9"></div>
+      <div class="ygrid" id="ygrid" hidden></div>
     </div>
     <div class="step" id="stepYear">
       <h3>流年<small id="yearNote"></small></h3>
@@ -593,8 +624,10 @@ function stackGZ(gz){
 
 // 四柱排法。港式豎排右起讀，攤成橫排就是 時日月年；預設仍為年月日時。
 // 存進 localStorage：偏好這種排法的人每次都要重按太煩，這是本工具唯一寫入的東西。
-var ORDER_KEY='paipan_pillar_order';
+var ORDER_KEY='paipan_pillar_order',GRID_KEY='paipan_year_grid';
 var revOrder=(function(){try{return localStorage.getItem(ORDER_KEY)==='rev';}catch(e){return false;}})();
+// 流年矩陣：每步大運一欄，欄內直排它那十年，一眼看完一生。
+var yearGrid=(function(){try{return localStorage.getItem(GRID_KEY)==='on';}catch(e){return false;}})();
 var gender='乾',mode='date',chart=null,lastDy=null,dayunList=[],selDayun=-1,selYear=null,selMonth=null,selDay=null;
 
 /* ── 輸入初始化 ── */
@@ -832,6 +865,49 @@ function renderDayun(){
   }).join('');
   el('dayunNote').textContent=dayunList.length?(dayunList[0].age+' 歲起運'):'';
 }
+// 流年矩陣。九步大運各一欄，欄內十年直排；grid-auto-flow:column 會照
+// 「填滿一欄再換下一欄」排，正好對應資料的分組順序，不必自己算索引。
+function renderYearGrid(){
+  var box=el('ygrid');
+  box.hidden=!yearGrid;
+  el('stepYear').hidden=yearGrid;      // 矩陣已含全部流年，橫排那條就多餘了
+  if(!yearGrid||!dayunList.length){box.innerHTML='';return;}
+  box.style.setProperty('--n',dayunList.length);
+  box.style.gridTemplateRows='repeat(10,auto)';
+  var h='';
+  dayunList.forEach(function(d,di){
+    for(var i=0;i<10;i++){
+      var y=d.from+i,gz=yearGZ(y),on=(di===selDayun&&y===selYear),now=(y===NOW_YEAR);
+      h+='<button type="button" class="ycell'+(on?' on':'')+(now?' now':'')+'"'
+        +' data-yg="'+di+'_'+y+'" aria-pressed="'+on+'"'+(now?' title="今年"':'')+'>'
+        +'<span class="'+wxc(gz[0])+'">'+gz[0]+'</span><span class="'+wxc(gz[1])+'">'+gz[1]+'</span>'
+        +(now?'<span class="sr-only">今年</span>':'')+'</button>';
+    }
+  });
+  box.innerHTML=h;
+}
+el('ygrid').addEventListener('click',function(e){
+  var b=e.target.closest('[data-yg]');if(!b)return;
+  var p=b.dataset.yg.split('_'),di=+p[0],y=+p[1];
+  // 同一格再點取消回到純原局；否則選中該大運與該流年。
+  if(di===selDayun&&y===selYear){selYear=null;selMonth=null;selDay=null;}
+  else{selDayun=di;selYear=y;selMonth=null;selDay=null;}
+  redrawAll();
+});
+function syncGridBtn(){
+  var b=el('btnGrid');
+  b.textContent=yearGrid?'橫排':'直排';
+  b.setAttribute('aria-pressed',yearGrid);
+  b.title='目前：'+(yearGrid?'全部大運的流年直排矩陣':'只看本運流年橫排')
+    +'　按此切換為'+(yearGrid?'只看本運（橫排）':'全部大運（直排）');
+}
+el('btnGrid').addEventListener('click',function(){
+  yearGrid=!yearGrid;
+  try{localStorage.setItem(GRID_KEY,yearGrid?'on':'off');}catch(e){}
+  syncGridBtn();
+  if(chart)redrawAll();else{el('ygrid').hidden=!yearGrid;el('stepYear').hidden=yearGrid;}
+});
+syncGridBtn();
 function renderLiunian(){
   if(selDayun<0){el('liunian').innerHTML='';return;}
   var d=dayunList[selDayun],out='';
@@ -868,7 +944,7 @@ function renderLiuyue(){
 // 否則命盤倒了、上面那行八字還是舊順序，兩處互相打臉。
 function redrawAll(){
   renderChart(chart);renderBorn(chart,lastDy);
-  renderDayun();renderLiunian();renderLiuyue();renderLiuri();
+  renderDayun();renderYearGrid();renderLiunian();renderLiuyue();renderLiuri();
 }
 function renderLiuri(){
   var box=el('liuri'),note=el('dayNote');
