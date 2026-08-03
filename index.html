@@ -738,7 +738,30 @@ var HOUR_PICKS=[['00:00','子時（凌晨 0 點～0 點 59）'],['01:00','丑時
   ['09:00','巳時（09:00–10:59）'],['11:00','午時（11:00–12:59）'],['13:00','未時（13:00–14:59）'],
   ['15:00','申時（15:00–16:59）'],['17:00','酉時（17:00–18:59）'],['19:00','戌時（19:00–20:59）'],
   ['21:00','亥時（21:00–22:59）'],['23:00','子時（晚上 11 點～11 點 59）']];
-var NOW_YEAR=new Date().getFullYear();
+/* 「現在」的唯一來源。全檔任何「今」都必須由這裡出，不准再各自 new Date()。
+   兩個獨立的錯誤本來疊在一起（2026-08-01 審查抓到）：
+     ① 用裝置本地時間 → 海外使用者在跨日那幾小時會標錯格。
+     ② 用公曆年當「今年」→ 但流年以立春為界，每年 1/1 到立春約 34 天，
+        「今」會標在前一個流年的格子上。這一項每年必中，影響約 9% 的日子。
+   nowUtc8() 回傳 UTC+8 牆鐘的年月日時分秒；與 calendar.js 的 epochMin 同一套
+   「把牆鐘當無時區數線」的語義，兩邊才能直接比較。 */
+function nowUtc8(){
+  var d=new Date(Date.now()+8*3600000);
+  return {y:d.getUTCFullYear(),m:d.getUTCMonth()+1,d:d.getUTCDate(),
+          h:d.getUTCHours(),mi:d.getUTCMinutes(),s:d.getUTCSeconds()};
+}
+// 牆鐘 → 可比較的數值（TZ-free）。節氣時刻也用同一個函式換算，單位一致才比得了。
+function wall(o){return Date.UTC(o.y,o.m-1,o.d,o.h||0,o.mi||0,o.s||0);}
+var NOW=nowUtc8();
+var NOW_WALL=wall(NOW);
+/* 今年＝現在時刻的**年柱所屬干支年**，不是公曆年。用既有的排盤函式反推，
+   不另寫一套簡化判定——簡化判定正是上面 ② 的來源。 */
+var NOW_YEAR=(function(){
+  try{
+    var gz=Cal.pillars(NOW.y,NOW.m,NOW.d,NOW.h,NOW.mi,NOW.s).year;
+    return yearGZ(NOW.y)===gz?NOW.y:NOW.y-1;
+  }catch(e){return NOW.y;}   // 超出節氣表範圍（2101+）時退回公曆年，不讓整頁掛掉
+})();
 
 function el(id){return document.getElementById(id);}
 /* 切換鈕的補充說明用隱藏文字接在可見字後面，不用 aria-label。
@@ -977,8 +1000,11 @@ function buildLiuYue(year){
   if(!jie)return out;
   var start=[2,4,6,8,0][GAN.indexOf(yearGZ(year)[0])%5];   // 五虎遁
   for(var i=0;i<12&&jie;i++){
+    // 保存到秒。只留日期的話，「本月」在交節當天會整天判錯——
+    // 節可能在 23:58 交，那一天絕大部分時間還屬於上一個月。
     out.push({gz:GAN[(start+jie.jieIdx)%10]+ZHI[(jie.jieIdx+2)%12],
-              term:termTW(jie.name),y:jie.y,m:jie.m,d:jie.d});
+              term:termTW(jie.name),y:jie.y,m:jie.m,d:jie.d,
+              h:jie.h,mi:jie.mi,s:jie.s});
     jie=Cal.nextJie(jie.y,jie.m,jie.d,jie.h,jie.mi,jie.s);
   }
   return out;
@@ -1051,7 +1077,9 @@ function renderChart(c){
       h+='<div class="age'+trc(x,i)+'"'
         +(isY?' title="'+selYear+'年'+x[1]+'，行年虛歲'+age+'歲"':'')+'>'
         // 可見只寫「41歲」；補充語義用隱藏文字接在後面，不用 aria-label 覆蓋可見字。
-        +(isY?age+'歲<span class="sr-only">，'+selYear+'年'+x[1]+'，行年虛歲</span>':'')
+        // sr-only 放在可見字**之前**：讀屏照 DOM 順序唸，放後面會變成
+        // 「41歲，2030年庚戌，行年虛歲」——歲數講完才講是誰的，順序是倒的。
+        +(isY?'<span class="sr-only">'+selYear+'年'+x[1]+'，行年虛歲</span>'+age+'歲':'')
         +'</div>';
     });
   }
@@ -1176,14 +1204,16 @@ function renderLiunian(){
 }
 function renderLiuyue(){
   if(selYear==null){el('liuyue').innerHTML='';el('monthNote').textContent='';return;}
-  var ms=buildLiuYue(selYear),now=Date.now();
+  var ms=buildLiuYue(selYear);
   // 四層運限都要標「現在」：大運、流年、流日原本都有，只有流月漏了，四層裡缺一層最刺眼。
   // 命理的月以節氣為界，所以「本月」＝今天落在該節到下一節之間，不是日曆的月份。
+  // 原本兩處都錯：只取節氣的日期（丟掉時分秒），又拿 Date.now() 這個絕對時刻
+  // 去比 Date.UTC(牆鐘) 這個數線值，等於白白差了 8 小時。現在兩邊都用 wall()。
   var nowIdx=-1;
   for(var k=0;k<ms.length;k++){
-    var a=Date.UTC(ms[k].y,ms[k].m-1,ms[k].d);
-    var b=ms[k+1]?Date.UTC(ms[k+1].y,ms[k+1].m-1,ms[k+1].d):a+32*86400000;
-    if(now>=a&&now<b){nowIdx=k;break;}
+    var a=wall(ms[k]);
+    var b=ms[k+1]?wall(ms[k+1]):a+32*86400000;
+    if(NOW_WALL>=a&&NOW_WALL<b){nowIdx=k;break;}
   }
   el('liuyue').innerHTML=ms.map(function(m,i){
     return '<button type="button" class="chip'+(i===selMonth?' on':'')+(i===nowIdx?' now':'')+'" data-ly="'+i+'"'
@@ -1203,8 +1233,9 @@ function renderLiuri(){
   var box=el('liuri'),note=el('dayNote');
   if(selYear==null||selMonth==null){box.innerHTML='';note.textContent='';el('stepDay').hidden=true;return;}
   el('stepDay').hidden=false;
-  var ds=buildLiuRi(selYear,selMonth),today=new Date();
-  var ty=today.getFullYear(),tm=today.getMonth()+1,td=today.getDate();
+  // 用 UTC+8 的年月日。裝置本地日期在海外會與盤面口徑差一天。
+  var ds=buildLiuRi(selYear,selMonth);
+  var ty=NOW.y,tm=NOW.m,td=NOW.d;
   box.innerHTML=ds.map(function(x,i){
     var isToday=(x.y===ty&&x.m===tm&&x.d===td);
     return '<button type="button" class="chip'+(i===selDay?' on':'')+(isToday?' now':'')+'" data-lr="'+i+'"'
@@ -1337,18 +1368,30 @@ el('btnGo').addEventListener('click',function(){
 
   navigator.serviceWorker.register('./sw.js').then(function(reg){
     // 已經有 controller 又冒出 installed 的新 worker ＝ 有新版在等
-    function watch(w){
-      if(!w)return;
-      w.addEventListener('statechange',function(){
-        if(w.state==='installed'&&navigator.serviceWorker.controller)
-          show('排盤已有新版','重新載入',function(){
-            // 由使用者主動觸發才 skipWaiting，不在排盤排到一半時強制刷新
-            w.postMessage({type:'SKIP_WAITING'});
-          });
+    function offer(w){
+      // 沒有 controller ＝ 這是第一次安裝，不是「有新版」，不能提示
+      if(!w||!navigator.serviceWorker.controller)return;
+      show('排盤已有新版','重新載入',function(){
+        // 由使用者主動觸發才 skipWaiting，不在排盤排到一半時強制刷新
+        w.postMessage({type:'SKIP_WAITING'});
       });
     }
-    watch(reg.waiting);watch(reg.installing);
+    /* 關鍵是先看 state 再決定要不要等 statechange。
+       頁面載入前新版就已經下載好時，reg.waiting 的 state 早就是 'installed'，
+       statechange 永遠不會再觸發——只掛監聽的話，新版永遠不會提示。
+       （2026-08-01 審查抓到；這是靜態程式碼看不出、要剛好在那個時序才會遇到的漏） */
+    function watch(w){
+      if(!w)return;
+      if(w.state==='installed'){offer(w);return;}
+      w.addEventListener('statechange',function(){
+        if(w.state==='installed')offer(w);
+      });
+    }
+    if(reg.waiting)offer(reg.waiting);
+    watch(reg.installing);
     reg.addEventListener('updatefound',function(){watch(reg.installing);});
+    // 主動問一次有沒有新版；不問的話，長開不關的分頁可能好幾天都不知道
+    try{reg.update();}catch(e){}
   }).catch(function(){/* 註冊失敗就當作沒有 PWA，不打擾使用者 */});
 
   var reloading=false;
