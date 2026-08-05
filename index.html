@@ -1411,6 +1411,23 @@ function renderLiuyue(){
 function redrawAll(){
   renderChart(chart);renderBorn(chart,lastDy);
   renderDayun();renderYearGrid();renderLiunian();renderLiuyue();renderLiuri();
+  notifyChart();
+}
+/* 把目前這張盤回報給上層（被子平書房嵌入時）。
+   書房的「收錄」原本讀自己那份手動四柱；首頁改成嵌入排盤器後，
+   使用者看到的盤與書房手上的資料就變成兩份，收錄會存到上一次的盤或空盤——
+   而且不會報錯。所以改成：**排盤器是唯一的資料來源**，畫什麼就回報什麼。
+   單獨開啟（非 iframe）時整段不作用。 */
+function notifyChart(){
+  if(!(window.parent&&window.parent!==window&&window.parent.postMessage))return;
+  if(!chart||!chart.p)return;
+  var steps=dayunList.map(function(d){return {gz:d.gz,age:d.age,from:d.from};});
+  window.parent.postMessage({type:'ziping-paipan-chart',
+    pillars:{year:chart.p.year,month:chart.p.month,day:chart.p.day,time:chart.p.time},
+    gender:gender,
+    // baseYear 取第一步大運的起運年；沒有生日的盤推不出來，如實給 null
+    dayun:steps.length?{steps:steps,baseYear:dayunList[0].from!=null?dayunList[0].from:null}:null
+  },'*');
 }
 function renderLiuri(){
   var box=el('liuri'),note=el('dayNote');
