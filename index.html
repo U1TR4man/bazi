@@ -396,6 +396,9 @@
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+/* 子平書房把書例自動送進排盤器時，仍把焦點交給標題供讀屏宣布換頁，
+   但不把程式焦點誤畫成像「坤造被框選」的黑框。鍵盤切頁維持原本可見焦點。 */
+.top h1.focus-no-ring:focus{outline:none}
 /* 給讀屏用的補充文字。用 aria-label 會「取代」整個可讀名稱——
    標了「今年」就把可見的干支與年份蓋掉了，讀屏使用者反而聽不到盤面內容。
    補充語義要用隱藏文字疊加，不是覆蓋。（2026-07-31 第三輪審視指出，屬實） */
@@ -1001,12 +1004,27 @@ function renderGzInputs(){
 renderGzInputs();
 if(!el('inDate').value)el('inDate').value='1990-01-01';
 
+/* 性別的唯一寫入點。改 gender 變數的地方一律走這裡，否則按鈕外觀會與程式狀態脫節
+   ——書例送盤時就發生過：payload 設了坤造，按鈕仍亮著「男（乾造）」。
+   opts.silent 用於「這個變更本來就是上層送來的」，避免回報回去繞成迴圈。 */
+function setGender(g,opts){
+  gender=(g==='乾'||g==='坤')?g:'';
+  // 視覺 class 與程式狀態必須同步更新，否則讀屏使用者看不到目前選了哪個。
+  el('segGender').querySelectorAll('button').forEach(function(x){
+    var on=x.dataset.g===gender;x.classList.toggle('on',on);x.setAttribute('aria-pressed',on);});
+  if(!(opts&&opts.silent))notifyGender();
+}
+/* 被子平書房以 iframe 嵌入時，把性別變更回報給上層。
+   上層的輔助欄自己也有一組性別按鈕；不回報的話，使用者在這裡改成坤造、
+   右欄仍停在乾造，兩邊無聲地不一致，之後「收進書房」就會存錯性別。
+   單獨開啟（非 iframe）時 window.parent === window，這段自動不作用。 */
+function notifyGender(){
+  if(window.parent&&window.parent!==window&&window.parent.postMessage)
+    window.parent.postMessage({type:'ziping-paipan-gender',gender:gender},'*');
+}
 el('segGender').addEventListener('click',function(e){
   var b=e.target.closest('button');if(!b)return;
-  gender=b.dataset.g;
-  // 視覺 class 與程式狀態必須同步更新，否則讀屏使用者看不到目前選了哪個。
-  this.querySelectorAll('button').forEach(function(x){
-    var on=x===b;x.classList.toggle('on',on);x.setAttribute('aria-pressed',on);});
+  setGender(b.dataset.g);
 });
 el('segMode').addEventListener('click',function(e){
   var b=e.target.closest('button');if(!b)return;
@@ -1117,13 +1135,19 @@ el('btnOrder').addEventListener('click',function(){
   if(chart)redrawAll();
 });
 syncOrderBtn();
-function showScreen(id){
+function showScreen(id,opts){
   ['scInput','scChart'].forEach(function(x){el(x).classList.toggle('on',x===id);});
   window.scrollTo(0,0);
   // 切頁後焦點若留在已隱藏的按鈕上，鍵盤使用者會迷路、讀屏也不會宣布換頁。
   // 把焦點交給新頁的起點。（2026-07-31 第三輪審視）
   var focus=id==='scChart'?el('chartTitle'):el('inQuick');
-  if(focus&&focus.focus)try{focus.focus({preventScroll:true});}catch(e){focus.focus();}
+  if(focus&&focus.focus){
+    if(opts&&opts.quietFocus){
+      focus.classList.add('focus-no-ring');
+      focus.addEventListener('blur',function(){focus.classList.remove('focus-no-ring');},{once:true});
+    }
+    try{focus.focus({preventScroll:true});}catch(e){focus.focus();}
+  }
 }
 
 /* ── 起運與大運 ── */
@@ -1205,7 +1229,7 @@ function renderChart(c){
   /* 行年虛歲：只在有流年欄時才有對齊對象，故只在此時備料；
      pre 是讀屏前綴，可見字是 text，title 由渲染器把兩者接成完整一句。 */
   var age=null;
-  if(tr.liunian){
+  if(tr.liunian&&c.b){
     var by=pillarYear(c.b,c.p.year);
     age={pre:selYear+'年'+tr.liunian+'，行年虛歲',text:(selYear-by+1)+'歲'};
   }
@@ -1234,6 +1258,21 @@ function currentTransit(){
 }
 function renderBorn(c,dy){
   // label／value 兩欄對齊，label 淡、value 深；數字等寬。比整句散文好掃（規格 §4.4）。
+  var row=function(k,v){return '<div class="brow"><span class="bk">'+k+'</span><span class="bv">'+v+'</span></div>';};
+  if(c.study){
+    var source=[c.study.book,c.study.title].filter(Boolean).join(' · ')||'子平書房';
+    var note=c.study.dayunSource==='book'
+      ?(c.study.anchored?'採書載大運與起運年，不反推生日':'採書載大運；未載起運年，暫不生成流年')
+      :c.study.dayunSource==='manual'
+        ?(c.study.anchored?'採右欄輸入的大運與起運年':'採右欄輸入的大運；未填起運年')
+        :(gender==='乾'||gender==='坤'?'依四柱與性別只排大運順序；不推起運歲／年':'性別未標，只顯示原局');
+    el('born').innerHTML=row('來源',esc(source))+row('資料','書載四柱直接載入，不以反推生日重算')+row('運限',note);
+    el('chartTitle').textContent=gender==='乾'?'乾造':gender==='坤'?'坤造':'命盤';
+    var studyBz=[c.p.year,c.p.month,c.p.day,c.p.time];
+    if(revOrder)studyBz.reverse();
+    el('chartSub').innerHTML='<span class="bz">'+studyBz.join(' ')+'</span>';
+    return;
+  }
   var t=c.noTime?'時間不詳（時柱與起運僅供參考）':pad2(c.b.h)+':'+pad2(c.b.mi);
   // 晚子時把用了哪一派寫在盤上：兩派日柱不同，盤面若不自陳，日後拿出來看根本分不出是哪一張。
   // 這個標註做成可點的：晚子開關只在輸入頁、而且只在填了 23 時才出現，
@@ -1241,7 +1280,6 @@ function renderBorn(c,dy){
   if(!c.noTime&&c.b.h===23)
     t+='　<button type="button" class="zilink" id="ziBack">晚子·日柱算'
       +(lateZi==='nextDay'?'次日':'當日')+'　改</button>';
-  var row=function(k,v){return '<div class="brow"><span class="bk">'+k+'</span><span class="bv">'+v+'</span></div>';};
   var s=row('出生',c.b.y+'.'+pad2(c.b.m)+'.'+pad2(c.b.d)+'　'+t);
   if(dy&&dy.qi){
     s+=row('起運',dy.qi.years+' 年 '+dy.qi.months+' 個月 '+dy.qi.days+' 天後　· 　'
@@ -1251,20 +1289,22 @@ function renderBorn(c,dy){
                dy.qi.gapDays+' 天 '+dy.qi.gapHours+' 時'].join('　'));
   }
   el('born').innerHTML=s;
-  el('chartTitle').textContent=gender==='乾'?'乾造':'坤造';
+  el('chartTitle').textContent=gender==='乾'?'乾造':gender==='坤'?'坤造':'命盤';
   var bz=[c.p.year,c.p.month,c.p.day,c.p.time];
   if(revOrder)bz.reverse();
   el('chartSub').innerHTML='<span class="bz">'+bz.join(' ')+'</span>';
 }
 function renderDayun(){
   el('dayun').innerHTML=dayunList.map(function(d,i){
-    var now=NOW_YEAR>=d.from&&NOW_YEAR<=d.to;
+    var now=d.from!=null&&NOW_YEAR>=d.from&&NOW_YEAR<=d.to;
     return '<button type="button" class="chip'+(i===selDayun?' on':'')+(now?' now':'')+'" data-dy="'+i+'"'
       +' aria-pressed="'+(i===selDayun)+'"'+(now?' title="目前大運"':'')+'>'
-      +stackGZ(d.gz)+'<span class="cs">'+d.age+'歲</span>'
+      +stackGZ(d.gz)+(d.age!=null?'<span class="cs">'+d.age+'歲</span>':'')
       +(now?'<span class="sr-only">目前大運</span>':'')+'</button>';
   }).join('');
-  el('dayunNote').textContent=dayunList.length?(dayunList[0].age+' 歲起運'):'';
+  el('dayunNote').textContent=!dayunList.length?'':
+    (dayunList[0].age!=null?dayunList[0].age+' 歲起運':
+      (dayunList[0].from!=null?dayunList[0].from+' 年起':'未載起運歲／年'));
 }
 // 流年矩陣。九步大運各一欄，欄內十年直排；grid-auto-flow:column 會照
 // 「填滿一欄再換下一欄」排，正好對應資料的分組順序，不必自己算索引。
@@ -1273,6 +1313,9 @@ function renderYearGrid(){
   box.hidden=!yearGrid;
   el('stepYear').hidden=yearGrid;      // 矩陣已含全部流年，橫排那條就多餘了
   if(!yearGrid||!dayunList.length){box.innerHTML='';return;}
+  if(dayunList.some(function(d){return d.from==null;})){
+    box.innerHTML='';box.hidden=true;el('stepYear').hidden=false;return;
+  }
   box.style.setProperty('--n',dayunList.length);
   // 12 列＝起年＋十個流年＋止年。頭尾標年份，中間不標，
   // 這樣不用數格子也知道落在哪一年（同紙本命書的「始於／止於」）。
@@ -1320,6 +1363,7 @@ syncGridBtn();
 function renderLiunian(){
   if(selDayun<0){el('liunian').innerHTML='';return;}
   var d=dayunList[selDayun],out='';
+  if(d.from==null){el('liunian').innerHTML='';el('yearNote').textContent=d.gz+'運 · 未載起運年，暫不排流年';return;}
   for(var i=0;i<10;i++){
     var y=d.from+i;
     out+='<button type="button" class="chip'+(y===selYear?' on':'')+(y===NOW_YEAR?' now':'')+'" data-ln="'+y+'"'
@@ -1410,7 +1454,7 @@ function showErr(t){el('msg').innerHTML=t?'<div class="err">'+esc(t)+'</div>':''
 function branchIndexOfHour(h){return h===23?0:Math.floor((h+1)/2);}
 // 排完盤自動定位到今年：找出今年所在的大運，沒有就取最接近的一步。
 function focusToday(){
-  if(!dayunList.length){selDayun=-1;selYear=null;return;}
+  if(!dayunList.length||dayunList[0].from==null){selDayun=-1;selYear=null;return;}
   var idx=-1;
   for(var i=0;i<dayunList.length;i++)
     if(NOW_YEAR>=dayunList[i].from&&NOW_YEAR<=dayunList[i].to){idx=i;break;}
@@ -1429,6 +1473,44 @@ function castFromDate(y,m,d,hh,mi,noTime){
   redrawAll();
   showScreen('scChart');
 }
+
+/* 子平書房嵌入橋接：只接收書上已定的四柱、性別與書載大運。
+   書例多數沒有生日；此路徑刻意不呼叫 Cal.reverse()，也不以反推日期重算四柱。 */
+function studyDayun(payload,p,g){
+  var d=payload&&payload.dayun,raw=d&&Array.isArray(d.steps)?d.steps.filter(function(x){
+    return x&&jiaziIndex(String(x.gz||''))>=0;
+  }):[];
+  var source=raw.length&&d&&d.source==='book'?'book':raw.length&&d&&d.source==='manual'?'manual':'auto';
+  if(!raw.length&&(g==='乾'||g==='坤')){
+    var yangYear=STEMS[p.year[0]].yin===false,fwd=(g==='乾')===yangYear,mi=jiaziIndex(p.month);
+    for(var n=1;n<=9;n++)raw.push({gz:gzOf(mi+(fwd?n:-n))});
+  }
+  var by=d&&d.baseYear!=null?Number(d.baseYear):null;
+  if(!isFinite(by))by=null;
+  return {source:source,anchored:by!=null,list:raw.map(function(x,i){
+    var age=x.age!=null?Number(x.age):null;if(!isFinite(age))age=null;
+    var from=by!=null?by+i*10:null;
+    return {gz:String(x.gz),age:age,from:from,to:from!=null?from+9:null};
+  })};
+}
+function loadStudyCase(payload){
+  payload=payload||{};
+  var q=payload.pillars||{},p={year:String(q.year||''),month:String(q.month||''),day:String(q.day||''),time:String(q.time||'')};
+  [p.year,p.month,p.day,p.time].forEach(function(gz,i){
+    if(jiaziIndex(gz)<0)throw new Error('書例第 '+(i+1)+' 柱不是合法干支：'+gz);
+  });
+  // silent：這個性別就是上層送來的，不必再回報，否則兩邊互相通知會繞圈。
+  setGender(payload.gender,{silent:true});
+  var dy=studyDayun(payload,p,gender);
+  chart={p:p,b:null,noTime:true,study:{
+    title:String(payload.title||'書例'),book:String(payload.book||''),
+    dayunSource:dy.source,anchored:dy.anchored
+  }};
+  dayunList=dy.list;lastDy=null;selMonth=null;selDay=null;
+  focusToday();redrawAll();showScreen('scChart',{quietFocus:true});
+  return true;
+}
+window.ZipingPaipan={loadStudyCase:loadStudyCase};
 
 el('btnGo').addEventListener('click',function(){
   showErr('');el('cands').innerHTML='';
@@ -1464,6 +1546,17 @@ el('btnGo').addEventListener('click',function(){
     }
   }catch(err){showErr('排盤時發生問題：'+(err&&err.message?err.message:err));}
 });
+
+window.addEventListener('message',function(e){
+  if(!e||e.source!==window.parent||!e.data||e.data.type!=='ziping-study-case')return;
+  var reply={type:'ziping-paipan-loaded',requestId:e.data.requestId||''};
+  try{loadStudyCase(e.data);reply.ok=true;}
+  catch(err){reply.ok=false;reply.error=err&&err.message?err.message:String(err);}
+  if(e.source&&e.source.postMessage)e.source.postMessage(reply,'*');
+});
+if(window.parent&&window.parent!==window&&window.parent.postMessage){
+  window.parent.postMessage({type:'ziping-paipan-ready'},'*');
+}
 
 /* ── PWA（保守版）───────────────────────────────────────────────
    只做兩件事：離線可用、有新版時提示。不做推播、不做背景同步、不存出生資料。
