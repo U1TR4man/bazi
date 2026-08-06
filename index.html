@@ -395,7 +395,13 @@
   --pad:12px;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+/* 鍵盤焦點：不用黑框。
+   （2026-08-05 改。原本是 2px 的 --ink（#2a231a，近黑），在米紙底色上是整頁最重的一塊，
+    按一下「直排」就跳出一個黑方框，比它標示的那顆按鈕還搶眼。
+    改用硃紅細框——子平書房那邊本來就一路用 --zhu 做焦點，這裡是唯一的例外。
+    刻意保留「有東西」而不是 outline:none：焦點框拿掉之後，用鍵盤的人就完全不知道
+    自己按 Enter 會觸發哪一顆（WCAG 2.4.7）。要的是不刺眼，不是看不見。） */
+:focus-visible{outline:1.5px solid var(--zhu);outline-offset:2px;border-radius:3px}
 /* 子平書房把書例自動送進排盤器時，仍把焦點交給標題供讀屏宣布換頁，
    但不把程式焦點誤畫成像「坤造被框選」的黑框。鍵盤切頁維持原本可見焦點。 */
 .top h1.focus-no-ring:focus{outline:none}
@@ -1306,6 +1312,13 @@ function renderBorn(c,dy){
   el('chartSub').innerHTML='<span class="bz">'+bz.join(' ')+'</span>';
 }
 function renderDayun(){
+  /* 欄數必須跟著實際步數走。
+     （2026-08-05 修。原本吃 HTML 寫死的 style="--n:9"，因為自算大運固定九步。
+      但書載大運（名人館、書例）步數由書決定——Kirk Douglas 那張只有 8 步，
+      格子仍照 9 欄切、只填 8 個，整列就縮成 9 分之 8 寬；
+      而下方流年矩陣的 --n 是動態設成 8 的，於是兩列基準不同，愈往右偏愈多。
+      對齊不是靠兩邊都寫 9，是靠兩邊都問同一個來源。） */
+  el('dayun').style.setProperty('--n',Math.max(1,dayunList.length));
   el('dayun').innerHTML=dayunList.map(function(d,i){
     var now=d.from!=null&&NOW_YEAR>=d.from&&NOW_YEAR<=d.to;
     return '<button type="button" class="chip'+(i===selDayun?' on':'')+(now?' now':'')+'" data-dy="'+i+'"'
