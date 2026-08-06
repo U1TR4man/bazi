@@ -420,6 +420,11 @@ body{
   background:var(--paper);color:var(--ink);font-family:var(--sans);
   font-size:15px;line-height:1.7;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;
 }
+/* 被子平書房以 iframe 嵌入時隱藏自己的捲軸：外層已經有一條，裡面再一條並排很吵。
+   **只在嵌入時隱藏**——單獨開啟這一頁時捲軸是必要的，沒有它就看不出下面還有東西。
+   class 由主程式在確認 window.parent !== window 後掛上。 */
+html.embedded{scrollbar-width:none;-ms-overflow-style:none}
+html.embedded::-webkit-scrollbar{display:none}
 .wrap{max-width:560px;margin:0 auto;padding:0 var(--pad) 34px}
 .screen{display:none}
 .screen.on{display:block}
@@ -1032,9 +1037,15 @@ function setGender(g,opts){
    右欄仍停在乾造，兩邊無聲地不一致，之後「收進書房」就會存錯性別。
    單獨開啟（非 iframe）時 window.parent === window，這段自動不作用。 */
 function notifyGender(){
-  if(window.parent&&window.parent!==window&&window.parent.postMessage)
-    window.parent.postMessage({type:'ziping-paipan-gender',gender:gender},'*');
+  if(!embedded())return;
+  window.parent.postMessage({type:'ziping-paipan-gender',gender:gender},'*');
 }
+function embedded(){
+  try{return !!(window.parent&&window.parent!==window&&window.parent.postMessage);}
+  catch(e){return false;}
+}
+// 嵌入時把捲軸交給外層，自己這條收起來（樣式見 html.embedded）
+if(embedded())document.documentElement.classList.add('embedded');
 el('segGender').addEventListener('click',function(e){
   var b=e.target.closest('button');if(!b)return;
   setGender(b.dataset.g);
@@ -1432,8 +1443,7 @@ function redrawAll(){
    而且不會報錯。所以改成：**排盤器是唯一的資料來源**，畫什麼就回報什麼。
    單獨開啟（非 iframe）時整段不作用。 */
 function notifyChart(){
-  if(!(window.parent&&window.parent!==window&&window.parent.postMessage))return;
-  if(!chart||!chart.p)return;
+  if(!embedded()||!chart||!chart.p)return;
   var steps=dayunList.map(function(d){return {gz:d.gz,age:d.age,from:d.from};});
   window.parent.postMessage({type:'ziping-paipan-chart',
     pillars:{year:chart.p.year,month:chart.p.month,day:chart.p.day,time:chart.p.time},
@@ -1619,9 +1629,7 @@ window.addEventListener('message',function(e){
   catch(err){reply.ok=false;reply.error=err&&err.message?err.message:String(err);}
   if(e.source&&e.source.postMessage)e.source.postMessage(reply,'*');
 });
-if(window.parent&&window.parent!==window&&window.parent.postMessage){
-  window.parent.postMessage({type:'ziping-paipan-ready'},'*');
-}
+if(embedded())window.parent.postMessage({type:'ziping-paipan-ready'},'*');
 
 /* ── PWA（保守版）───────────────────────────────────────────────
    只做兩件事：離線可用、有新版時提示。不做推播、不做背景同步、不存出生資料。
