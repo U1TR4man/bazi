@@ -1233,10 +1233,21 @@ footer .ft-more>div:last-child{opacity:.8}
    2026-08-05 那次走位就是這個坑（當時是兩邊各寫死不同的欄數）。
    所以這裡只換視覺載體，grid-template-columns:repeat(--n,1fr) 與 gap:2px 照舊。
    （九步大運在 375px 上每欄約 34px，塞得下 4 位數年份＋歲數，字級一律用 --w 量。） */
+   （2026-08-17d 第二步：真機確認大運列與流年矩陣仍逐欄對齊之後，
+    同一套載體推到流年橫排／流月／流日。四列的閱讀順序統一成
+    「何時 → 什麼」——定位字在上、干支在下。
+    .tl2＝兩層（只有定位字與干支），大運是三層所以高一階。） */
+.chips.tl{--tl-h:74px;--tl-pb:13px}
+.chips.tl.tl2{--tl-h:46px;--tl-pb:12px}
 .chips.tl .chip{
   background:transparent;border:0;border-radius:0;
-  padding:6px 0 13px;min-height:74px;justify-content:flex-start;
+  padding:6px 0 var(--tl-pb);min-height:var(--tl-h);justify-content:flex-start;
 }
+/* 流日那一列的 .chips.days .chip{padding:4px 0 3px} 與上面同分（0,3,0），
+   同分就只能靠書寫順序決勝——本檔已經因為這種平手讓整條色帶消失過一次。
+   這裡用 0,4,0 明確蓋掉，規則搬到哪裡結果都一樣。 */
+.chips.days.tl.tl2 .chip{padding:6px 0 var(--tl-pb)}
+.chips.tl.tl2 .chip .cg:first-of-type{margin-top:5px}
 .chips.tl .chip .cy{
   font-family:var(--sans);font-variant-numeric:tabular-nums;font-feature-settings:"tnum";
   font-size:clamp(7.5px,calc(var(--w) * .22),10.5px);
@@ -1249,7 +1260,8 @@ footer .ft-more>div:last-child{opacity:.8}
 .chips.tl .chip.on .cs,.chips.tl .chip.on .cy{color:var(--zhu-deep)}
 /* 現在＝底部朱線。用 ::before，因為 ::after 已經是「今」字。 */
 .chips.tl .chip.now::before{
-  content:"";position:absolute;left:24%;right:24%;bottom:12px;height:2px;background:var(--zhu);
+  content:"";position:absolute;left:24%;right:24%;height:2px;background:var(--zhu);
+  bottom:calc(var(--tl-pb) - 1px);   /* 跟著各列自己的下緣留白走，不寫死 */
 }
 /* 「今」移到底部置中（原本在右上角，是給有框格子用的定位）。
    刻意維持**純朱紅文字、無底色**——V3 §17 也給了「實朱小 marker」這個選項，
@@ -1525,15 +1537,15 @@ footer{text-align:center;font-size:11.5px;color:var(--ink-soft);padding:16px 6px
     </div>
     <div class="step" id="stepYear">
       <h2>流年<small id="yearNote"></small></h2>
-      <div class="chips" id="liunian" style="--n:10"></div>
+      <div class="chips tl tl2" id="liunian" style="--n:10"></div>
     </div>
     <div class="step" id="stepMonth">
       <h2>流月<small id="monthNote"></small></h2>
-      <div class="chips" id="liuyue" style="--n:12"></div>
+      <div class="chips tl tl2" id="liuyue" style="--n:12"></div>
     </div>
     <div class="step" id="stepDay">
       <h2>流日<small id="dayNote"></small></h2>
-      <div class="chips days" id="liuri" style="--n:7"></div>
+      <div class="chips days tl tl2" id="liuri" style="--n:7"></div>
     </div>
   </div>
 
@@ -2227,7 +2239,7 @@ function renderLiunian(){
     var title=[now?'今年':'',transitionText(x)].filter(Boolean).join('；');
     out+='<button type="button" class="chip'+(y===selYear?' on':'')+(now?' now':'')+(x?' cross':'')+'" data-ln="'+y+'"'
       +' aria-pressed="'+(y===selYear)+'"'+(title?' title="'+esc(title)+'"':'')+'>'
-      +stackGZ(yearGZ(y))+'<span class="cs">'+String(y).slice(2)+'</span>'
+      +'<span class="cs">'+String(y).slice(2)+'</span>'+stackGZ(yearGZ(y))
       +transitionMark(x)+(now?'<span class="sr-only">今年</span>':'')+'</button>';
   }
   el('liunian').innerHTML=out;
@@ -2251,7 +2263,7 @@ function renderLiuyue(){
   el('liuyue').innerHTML=ms.map(function(m,i){
     return '<button type="button" class="chip'+(i===selMonth?' on':'')+(i===nowIdx?' now':'')+'" data-ly="'+i+'"'
       +' aria-pressed="'+(i===selMonth)+'"'+(i===nowIdx?' title="本月"':'')+'>'
-      +stackGZ(m.gz)+'<span class="cs">'+m.m+'/'+m.d+'</span>'
+      +'<span class="cs">'+m.m+'/'+m.d+'</span>'+stackGZ(m.gz)
       +(i===nowIdx?'<span class="sr-only">本月</span>':'')+'</button>';
   }).join('');
   el('monthNote').textContent=selYear+' 年 '+yearGZ(selYear)+'　自立春起算';
@@ -2289,7 +2301,7 @@ function renderLiuri(){
     var isToday=(x.y===ty&&x.m===tm&&x.d===td);
     return '<button type="button" class="chip'+(i===selDay?' on':'')+(isToday?' now':'')+'" data-lr="'+i+'"'
       +' aria-pressed="'+(i===selDay)+'"'+(isToday?' title="今日"':'')+'>'
-      +stackGZ(x.gz)+'<span class="cs">'+x.m+'/'+x.d+'</span>'
+      +'<span class="cs">'+x.m+'/'+x.d+'</span>'+stackGZ(x.gz)
       +(isToday?'<span class="sr-only">今日</span>':'')+'</button>';
   }).join('');
   note.textContent=ds.length?(ds[0].m+'/'+ds[0].d+'–'+ds[ds.length-1].m+'/'+ds[ds.length-1].d+'　共 '+ds.length+' 天'):'';
