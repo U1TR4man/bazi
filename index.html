@@ -621,6 +621,17 @@
   --paper:#f3eee1;--surface:#fcfaf3;--panel:#fbf7ec;--ink:#2a231a;--ink-soft:#6f6455;
   --line:#d7cbb0;--line-soft:#e8e0ca;
   --zhu:#b13a25;--zhu-deep:#8c2c19;--ink-sel:#3f382f;--zhu-line:#e0c2ae;--zhu-wash:#f6e9df;--band:#faf6ee;--band-yr:#f8f2e6;
+  /* ── 2026-08-17b 新增語義色。不改品牌色，只補「更淡一階」的層級用色。
+     這一輪的方向是**減紅**：實朱紅之後只留給排盤 CTA 與命理 marker（今、日主），
+     「選取」一律降為淡朱洗色＋深朱字＋底線。
+     命盤頁 2026-07-31 就已經是淡色塊了（.chip.on 用 --band），
+     一直沒跟上的是輸入頁的 segmented——這裡是把那個不一致補掉，不是推翻舊規則。 */
+  --surface-raised:#fffdf7;   /* 比 --surface 亮一階，給 input */
+  --ink-faint:#948a7c;        /* 比 --ink-soft 淡一階，給「西曆」這類補充標記 */
+  --line-strong:#c5b69e;      /* 比 --line 深一階，需要時才用 */
+  --zhu-wash-2:#fbf2ef;       /* 比 --zhu-wash 淡一階，quiet selected 的底色 */
+  --radius-card:10px;--radius-control:7px;--radius-button:8px;
+  --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:20px;--s6:24px;
   /* 干支與標題一律用內嵌的宋體子集（ZipingSerif，63 字約 15KB），不靠系統字型碰運氣：
      iOS 有 Songti TC、Android 多半沒有、Linux 可能全無，一旦 fallback 到 generic serif，
      CJK 在多數系統會退回黑體，整個氣質就跑掉。後面的系統字型只是保險。
@@ -692,7 +703,14 @@ html.embedded #scInput>.wrap>.top{display:none}
   border-radius:4px;padding:9px 14px;cursor:pointer;min-height:40px;
 }
 /* ── 卡片與表單 ── */
-.card{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px;margin:0 0 12px}
+/* 卡片：極輕的紙張層次。陰影的標準是「看不出有 shadow，只感覺卡片與背景分開」——
+   一旦看得出來就變成 SaaS dashboard，那是規格明確排除的方向。 */
+.card{
+  background:linear-gradient(180deg,var(--surface-raised) 0%,var(--surface) 100%);
+  border:1px solid rgba(160,140,105,.30);border-radius:var(--radius-card);
+  padding:14px;margin:0 0 12px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.72),0 8px 26px rgba(58,43,25,.045);
+}
 .card h2{font-family:var(--serif);margin:0 0 10px;font-size:16px;font-weight:500;letter-spacing:.14em;color:var(--zhu-deep)}
 label.f{display:block;margin:0 0 12px}
 label.f>span{display:block;font-size:13px;color:var(--ink-soft);margin:0 0 5px;letter-spacing:.04em}
@@ -701,22 +719,63 @@ label.f>span{display:block;font-size:13px;color:var(--ink-soft);margin:0 0 5px;l
 input[type=date],input[type=time],input[type=number],input[type=text],select{
   width:100%;max-width:100%;min-width:0;padding:10px;font-size:16px;
   font-family:var(--sans);color:var(--ink);
-  background:#fffdf6;border:1px solid var(--line);border-radius:4px;min-height:46px;
+  background:var(--surface-raised);border:1px solid var(--line);
+  border-radius:var(--radius-control);min-height:46px;
+  /* 極輕的上緣高光，讓欄位像壓在紙上而不是貼上去的色塊 */
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5);
   -webkit-appearance:none;appearance:none;
+  transition:border-color .14s ease,box-shadow .14s ease;
 }
 input[type=date],input[type=time]{text-align:left}
 select{background-image:none}
-input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
-.seg{display:flex;gap:8px;margin:0 0 12px}
+/* focus 不用粗朱紅框（那在米紙底上是整頁最重的一塊），改成邊線轉朱＋外圈淡朱光暈。
+   仍然明顯看得出焦點在哪，但不會蓋過欄位本身的內容。 */
+input:focus,select:focus{
+  outline:none;border-color:var(--zhu-line);
+  box-shadow:0 0 0 2px var(--zhu-wash),inset 0 1px 0 rgba(255,255,255,.6);
+}
+/* ── Segmented control（2026-08-17b 減紅）──────────────────────
+   原本 selected 是**實朱紅整格填滿**，而全頁有三組 segmented，
+   等於畫面上同時有三塊高飽和朱紅在搶注意力，排盤 CTA 反而不突出。
+   改成 quiet selected：淡朱洗底＋深朱字＋底部 2px 朱線。
+   實朱紅之後只保留給排盤 CTA 與命理 marker（今、日主）。
+
+   整組做成一個 shell：外框一圈、內部用分隔線，看起來才像「三選一」，
+   而不是三顆各自帶框的平級按鈕。46px touch target 不動。 */
+.seg{
+  display:flex;gap:0;margin:0 0 12px;
+  border:1px solid var(--line);border-radius:var(--radius-control);overflow:hidden;
+  background:rgba(255,253,247,.55);
+}
 .seg button{
   flex:1;padding:10px 4px;font-family:var(--sans);font-size:15px;color:var(--ink);cursor:pointer;
-  background:#fffdf6;border:1px solid var(--line);border-radius:4px;min-height:46px;
+  background:transparent;border:0;border-right:1px solid var(--line-soft);border-radius:0;
+  min-height:46px;
+  transition:background-color .14s ease,color .14s ease,box-shadow .14s ease;
 }
-.seg button.on{background:var(--zhu);border-color:var(--zhu);color:#f9f1e4;font-weight:500}
+.seg button:last-child{border-right:0}
+.seg button.on{
+  background:var(--zhu-wash-2);color:var(--zhu-deep);font-weight:500;
+  box-shadow:inset 0 -2px 0 var(--zhu);
+}
+/* hover 只在真有指標裝置時生效，手機不會出現「點完卡在 hover」 */
+@media (hover:hover){
+  .seg button:not(.on):hover{background:var(--band)}
+}
+.seg button:active{background:var(--zhu-wash)}
+/* 排盤：全頁**唯一**的實朱紅塊。segmented 的選取已降為淡朱洗色，
+   所以這裡的紅才真的有「朱印」的效果。 */
 .btn{
   display:block;width:100%;padding:13px;font-family:var(--serif);font-size:19px;letter-spacing:.3em;
-  text-indent:.3em;font-weight:500;cursor:pointer;background:var(--zhu);color:#f9f1e4;
-  border:0;border-radius:4px;min-height:52px;
+  text-indent:.3em;font-weight:500;cursor:pointer;color:#fff7ed;
+  background:linear-gradient(180deg,#b94a34 0%,#a93624 100%);
+  border:1px solid rgba(110,29,17,.20);border-radius:var(--radius-button);min-height:52px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.13),0 3px 7px rgba(91,37,20,.11);
+  transition:box-shadow .14s ease,transform .14s ease;
+}
+.btn:active{
+  transform:translateY(1px);
+  box-shadow:inset 0 2px 3px rgba(70,20,10,.14);
 }
 .chk{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink-soft);margin:-4px 0 12px}
 .chk input{width:20px;height:20px;margin:0}
@@ -726,7 +785,11 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
    核心判斷：問題不是控件太高，是**同一層級同時出現太多同等權重的東西**。
    所以做法是「減少同時可見的選項」，不是把可點擊面積壓小。
    min-height:46px 一律保留——壓的是版面與間距，不是手指。 */
-.input-card{padding:16px 14px}
+/* 上一輪用 progressive disclosure 把頁面縮短了，所以可以把部分空間還給留白。
+   規格 §25：padding 隨寬度遞增，touch target 不變。 */
+.input-card{padding:var(--s5) var(--s5) var(--s5)}
+@media (max-width:374px){.input-card{padding:var(--s4) 14px var(--s5)}}
+@media (min-width:430px){.input-card{padding:var(--s6) var(--s6)}}
 
 /* 設定區：label 左、control 右，把性別與排盤方式從「兩個區塊」壓成「兩行設定」。 */
 .setting-row{
@@ -741,11 +804,23 @@ input:focus,select:focus{outline:2px solid var(--zhu);outline-offset:-1px}
 }
 .setup{margin-bottom:4px}
 
-/* 區段分隔線：一張卡片內用細線分段，比拆成多張卡片更貼近「紙張工具」。 */
-.section-rule{height:1px;background:var(--line-soft);margin:18px 0}
+/* 區段分隔：不要全寬線（那是表格感）。用一段 42% 寬的漸層短線，
+   右端淡出，視覺上像頁面上的一道折痕而不是格線。 */
+.section-rule{
+  height:1px;width:42%;margin:var(--s5) 0;
+  background:linear-gradient(90deg,var(--line),transparent);
+}
 
-/* 區段標題（出生資料）用宋體＋朱紅深；欄位 label 一律淡墨，不搶。 */
-.card h2.sec-h{font-size:15px;margin:0 0 12px}
+/* 區段標題：宋體＋深朱，下方一段 26px 短朱線。
+   不用全寬紅線——那會把卡片切成表格；短線是書籍編輯的做法。 */
+.card h2.sec-h{font-size:17px;margin:0 0 var(--s3);letter-spacing:.1em}
+.card h2.sec-h::after{
+  content:"";display:block;width:26px;height:1px;margin-top:7px;background:var(--zhu-line);
+}
+/* 設定區的兩個 label 是欄位級不是區段級，維持淡墨小字，不掛短線 */
+.setting-row h2::after{content:none}
+/* 「西曆」這類補充標記再淡一階，與欄位名分開 */
+label.f>span small{color:var(--ink-faint)}
 label.f>span small{
   font-family:var(--sans);font-size:11.5px;color:var(--ink-soft);
   letter-spacing:.04em;margin-left:6px;font-weight:400;
@@ -769,13 +844,30 @@ label.f>span small{
 }
 
 /* 快速輸入：熟手捷徑，收起來預設不佔位置 */
-.quick-entry{margin:14px 0 4px;padding-top:12px;border-top:1px solid var(--line-soft)}
+/* 快速輸入：tertiary control。原生 <details> 的三角是各家瀏覽器自己畫的，
+   跟這一套視覺完全不搭，收掉改用自製 1px chevron。 */
+.quick-entry{
+  margin:14px 0 4px;padding-top:2px;
+  border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft);
+}
 .quick-entry summary{
   color:var(--ink-soft);font-size:13px;cursor:pointer;
   /* summary 是可點的，就得有可點的高度。第一版寫 24px，被自己的 touch-target
      斷言抓出來——它看起來像一行說明文字，但手指不會因此變小。 */
-  min-height:44px;display:flex;align-items:center;
+  min-height:44px;display:flex;align-items:center;justify-content:space-between;
+  list-style:none;   /* 收掉原生標記 */
+  transition:color .14s ease;
 }
+.quick-entry summary::-webkit-details-marker{display:none}
+/* 自製 chevron：兩條 1px 線轉 45°，展開時轉向上 */
+.quick-entry summary::after{
+  content:"";width:7px;height:7px;flex:0 0 auto;margin-right:2px;
+  border-right:1px solid var(--ink-faint);border-bottom:1px solid var(--ink-faint);
+  transform:rotate(45deg) translateY(-2px);
+  transition:transform .14s ease;
+}
+.quick-entry[open] summary::after{transform:rotate(-135deg) translateY(-2px)}
+@media (hover:hover){.quick-entry summary:hover{color:var(--ink)}}
 .quick-entry[open] summary{margin-bottom:10px}
 .quick-entry .hint{margin:4px 0 0}
 
@@ -783,6 +875,29 @@ label.f>span small{
 .range-row{margin-bottom:2px}
 .range-row label.f{margin-bottom:6px}
 .range-row input{font-size:15px}
+
+/* 晚子時面板：特殊規則，不是錯誤。用淡朱底＋左側朱線，
+   不用警告紅、不用驚嘆號——它要傳達的是「這裡有兩派做法」，不是「你做錯了」。 */
+#ziPane{
+  background:var(--zhu-wash-2);border-left:2px solid var(--zhu-line);
+  border-radius:0 var(--radius-control) var(--radius-control) 0;
+  padding:11px 12px;margin:0 0 var(--s3);
+}
+#ziPane>span{display:block;color:var(--zhu-deep);font-weight:500;margin-bottom:8px}
+#ziPane .seg{margin:0 0 2px;background:rgba(255,253,247,.7)}
+
+/* 未知時間說明改用同一套材質，維持「狀態不是錯誤」的語言 */
+.note-box{background:var(--zhu-wash-2);border-left-color:var(--zhu-line)}
+
+/* 命盤 header 三級：命盤＝主標題／年→時＝tertiary／重新輸入＝secondary。
+   三者長得一樣的話，使用者分不出哪個是離開這一頁。 */
+.ord{border-color:transparent;background:transparent}
+@media (hover:hover){.ord:hover{background:var(--band)}}
+.back{
+  background:var(--surface-raised);border-color:var(--line);color:var(--ink);
+  border-radius:var(--radius-control);
+}
+@media (hover:hover){.back:hover{border-color:var(--line-strong)}}
 
 /* P2 §12.3：大運／流年／流月／流日四段的 heading 間距統一，
    不再各自因為前一段內容長短而看起來忽寬忽窄。 */
