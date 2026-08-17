@@ -1320,11 +1320,28 @@ footer .ft-more>div:last-child{opacity:.8}
 }
 /* 矩陣去框，跟上方命盤同一套語言：這裡是通覽用的閱讀區，
    90 個框只會變成網格噪音。秩序靠欄軌與行距維持，不靠線。 */
+/* 上下留白 1px → 4px（2026-08-17f）。
+   V3 §18 要「避免每年像 chip」——但矩陣 2026-08-01 去框時就已經沒有 chip 了，
+   量下來真正的問題是別的：每格在 375px 上只有 13.8px 高，卻是個**可點的按鈕**。
+   90 個 14px 高的目標，手指按下去幾乎一定歪一格。
+   加到 4px 之後約 21px；矩陣總高 160 → 220px，仍看得到全部 90 年。
+   **仍然低於 44px，這是刻意的**：這一塊的作用是通覽九十年，
+   撐到 44px 會變成 500px 高、失去「一眼看完」這個唯一理由；
+   而且點錯的代價只是選到隔一年，再點一下就好。取捨寫在這裡，不是忘了。 */
 .ycell{
   background:transparent;border:0;border-radius:var(--radius-dense);
-  padding:1px 0;text-align:center;cursor:pointer;color:var(--ink);
+  padding:4px 0;text-align:center;cursor:pointer;color:var(--ink);
   font-family:var(--serif);font-size:clamp(9px,calc(var(--w) * .32),14px);
   line-height:1.08;white-space:nowrap;min-width:0;position:relative;
+  transition:background-color .14s ease;
+}
+/* hover 用 --band，選取用 --band-yr——**刻意**是兩個深淺。
+   2026-08-01 的結論是「--band 在 90 格裡找不到」，那是針對「選取」說的：
+   選取必須是**找得到**的（你放開手之後還要看得出剛才選了哪一格）。
+   hover 不必找得到，因為游標就在那裡；hover 該是一句耳語。
+   所以同一個 --band 在這兩個用途上，一個不合格、一個正好。 */
+@media (hover:hover){
+  .ycell:not(.on):hover{background:var(--band)}
 }
 /* 選取用 outline 不用 border——border 會佔 layout，去框後一選就把整欄擠位移。
    底色不用 --band 而用 --band-yr：大運格自己有一圈 --line 細框撐著辨識度，
@@ -1335,7 +1352,10 @@ footer .ft-more>div:last-child{opacity:.8}
 /* 每欄頭尾的西元年。極小、淡，只作定位用，不搶干支。 */
 .ylab{
   font-family:var(--sans);font-variant-numeric:tabular-nums;font-feature-settings:"tnum";
-  font-size:clamp(7.5px,calc(var(--w) * .2),9.5px);color:var(--ink-soft);
+  /* metadata 一律 --ink-faint，與 timeline 的年份／歲數同一階
+     （2026-08-17f。原本這裡是 --ink-soft，比 timeline 的 metadata 深一階，
+      同樣是「定位用的小字」在兩處是兩個深淺）。 */
+  font-size:clamp(7.5px,calc(var(--w) * .2),9.5px);color:var(--ink-faint);
   display:block;text-align:center;line-height:1.2;white-space:nowrap;min-width:0;
 }
 /* 修飾類不可用 top／bot 這種通用詞——頁首的 .top{display:flex} 會一併命中，
@@ -1343,6 +1363,11 @@ footer .ft-more>div:last-child{opacity:.8}
    （2026-08-01：盒子中心量起來對齊，墨水卻偏左 16px，就是這個原因） */
 .ylab-t{padding-bottom:2px}
 .ylab-b{padding-top:2px}
+/* V3 §18 建議「今年給 very pale wash」——**刻意不做**。
+   目前的分工是：選取＝一塊淡色、現在＝一個「今」字。
+   今年再加一塊淡底，就等於同一種載體（淡底）同時表示兩件事，
+   而 2026-07-31 那一輪整輪的工作就是把這種一色多義拆開。
+   「今」字已經自解釋，不需要再借第二個載體。 */
 .ycell.now::after{
   content:"今";position:absolute;top:0;right:1px;line-height:1;
   font-size:clamp(6.5px,calc(var(--w) * .2),9px);color:var(--zhu);
