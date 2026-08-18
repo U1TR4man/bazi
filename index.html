@@ -1180,7 +1180,10 @@ footer .ft-more>div:last-child{opacity:.8}
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;
   min-width:0;overflow:hidden;
 }
-.chip .cg{font-size:clamp(13px,calc(var(--w) * .62),26px);line-height:1.12;font-weight:500;display:block}
+/* 干支字級抽成 --gzf：下面「今／交」要對齊天干那一行，必須用同一個值算位置。
+   兩處各寫一次 clamp()，改了一邊忘了另一邊，標記就會慢慢飄離天干。 */
+.chip{--gzf:clamp(13px,calc(var(--w) * .62),26px)}
+.chip .cg{font-size:var(--gzf);line-height:1.12;font-weight:500;display:block}
 .chip .cs{
   font-family:var(--sans);font-variant-numeric:tabular-nums;font-feature-settings:"tnum";
   font-size:clamp(8.5px,calc(var(--w) * .27),12px);
@@ -1271,6 +1274,21 @@ footer .ft-more>div:last-child{opacity:.8}
    `.chips.tl .chip.now .cg` 是 0,3,0，直接寫上去會蓋掉五行色——
    那就把 2026-07-31 拆紅色語義時定下的「火五行＝干支字色」推翻了。
    「現在」已經由底部朱線＋「今」兩個載體表達，不需要再借用字色。 */
+/* 「今」與「交」對齊**天干那一行**（2026-08-17h）。
+   timeline 的格子是三層：定位字（年／歲／日期）→ 天干 → 地支。
+   標記原本釘在 top:1px，那是格子最上緣——貼著的是定位字，不是天干，
+   讀起來像在標那個年份。改成從下緣量到天干的中線：
+
+     下緣留白 var(--tl-pb)
+   + 地支一整行  var(--gzf) * 1.12
+   + 天干半行    var(--gzf) * 0.56
+   − 標記自身半行 0.5em（標記 line-height:1，所以 0.5em 正好是一半）
+
+   左右不動：交在左、今在右，天干正好被兩個標記夾在中間。 */
+.chips.tl .chip.now::after,
+.chips.tl .chip .crossmark{
+  top:auto;bottom:calc(var(--tl-pb) + var(--gzf) * 1.68 - 0.5em);
+}
 @media (hover:hover){
   .chips.tl .chip:not(.on):hover{background:var(--band)}
 }
