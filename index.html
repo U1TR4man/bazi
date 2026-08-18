@@ -1045,9 +1045,44 @@ footer .ft-more>div:last-child{opacity:.8}
   font-family:var(--serif);font-size:13px;font-weight:500;color:var(--zhu-deep);
   letter-spacing:.06em;text-align:center;
 }
+/* B 案（2026-08-17p）：四邊框收成一條底線。
+
+   這一區與 segmented 的取捨不一樣：那八個格子是這個模式**唯一的輸入**，
+   去框的風險不是「看不出可以點」，而是「看不出這裡要我填東西」。
+   而八字反查的使用者多半是照著書把干支抄進來——底線正好講的是
+   紙本表格「填在線上」那個動作，所以框可以去、線不能去。
+
+   （另有一個「命盤式」的做法：干上支下、完全無框、輸入區長成它要產生的那張盤。
+    最一致，但它把唯一的輸入變成看起來已經填好的結果，第一次用的人可能
+    直接按排盤而沒發現那八個字只是預設值。要救就得再加一層提示，所以不採。） */
 .gzcol select{
   font-family:var(--serif);font-size:22px;text-align:center;text-align-last:center;
-  padding:8px 0;min-height:52px;
+  padding:8px 0 6px;min-height:52px;
+  background:transparent;box-shadow:none;
+  border:0;border-bottom:1px solid var(--line);border-radius:0;
+}
+/* focus：底線轉朱並加粗一階。不用外圈光暈——那是給有框欄位的，
+   套在只有一條底線的欄位上會浮出一個看不到邊的方框。 */
+.gzcol select:focus{
+  outline:none;box-shadow:inset 0 -1px 0 var(--zhu-line);
+  border-bottom-color:var(--zhu-line);
+}
+/* 干支上五行色，與命盤同一套色調（使用者指定）。
+   由 syncGzColors() 依目前選到的字動態掛 class——
+   <select> 收起時只顯示一個字，那個字該是什麼顏色，命盤已經定義過了。 */
+.gzcol select.wood{color:var(--wood)}
+.gzcol select.fire{color:var(--fire)}
+.gzcol select.earth{color:var(--earth)}
+.gzcol select.metal{color:var(--metal)}
+.gzcol select.water{color:var(--water)}
+/* 搜尋範圍的兩個年份欄同樣處理：它們與干支欄同屬這一區的輸入 */
+#gzRange input{
+  background:transparent;box-shadow:none;
+  border:0;border-bottom:1px solid var(--line);border-radius:0;padding:10px 2px;
+}
+#gzRange input:focus{
+  outline:none;box-shadow:inset 0 -1px 0 var(--zhu-line);
+  border-bottom-color:var(--zhu-line);
 }
 /* ── 命盤 ── */
 /* 命盤欄數會變（四柱＋選中的大運／流年／流月），字級同樣用 cqw 量自己，
@@ -1879,6 +1914,15 @@ function renderGzInputs(){
       +'<select data-gz="z'+i+'">'+ZHI.split('').map(function(z){return '<option>'+z+'</option>';}).join('')+'</select></div>';
   });
   el('gzInputs').innerHTML=h+'</div>';
+  syncGzColors();
+}
+/* 把每個 <select> 目前選到的干支染成它的五行色。
+   顏色的定義來源是命盤那一套（wxc），不另建一份對照表——
+   兩份對照表遲早會分家，而「甲是木」這件事只該寫在一個地方。 */
+function syncGzColors(){
+  el('gzInputs').querySelectorAll('select').forEach(function(sel){
+    sel.className=wxc(sel.value);
+  });
 }
 renderGzInputs();
 if(!el('inDate').value)el('inDate').value='1990-01-01';
@@ -2077,7 +2121,11 @@ function syncOrderBtn(){
 el('btnOrder').addEventListener('click',function(){
   revOrder=!revOrder;
   try{localStorage.setItem(ORDER_KEY,revOrder?'rev':'std');}catch(e){}
-  el('btnTmMore').addEventListener('click',revealTimeMode);
+  /* 改了干支就重新上色。用 change 而不是每次讀值時才算——
+   顏色是顯示狀態，該由「值變了」這件事驅動，不該掛在讀值的路徑上
+   （讀值只在按排盤時發生，那時已經太晚了）。 */
+el('gzInputs').addEventListener('change',syncGzColors);
+el('btnTmMore').addEventListener('click',revealTimeMode);
 syncOrderBtn();renderGzInputs();
   if(chart)redrawAll();
 });
