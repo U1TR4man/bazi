@@ -1204,15 +1204,27 @@ footer .ft-more>div:last-child{opacity:.8}
 }
 /* 干支字級抽成 --gzf：下面「今／交」要對齊天干那一行，必須用同一個值算位置。
    兩處各寫一次 clamp()，改了一邊忘了另一邊，標記就會慢慢飄離天干。 */
-.chip{--gzf:clamp(13px,calc(var(--w) * .62),26px)}
+/* --tw＝**排版尺度**，與 --w（實際格寬）分開。
+   預設兩者相同；只有流日不同——見下方 .chips.days。 */
+.chips{--tw:var(--w)}
+.chip{--gzf:clamp(13px,calc(var(--tw) * .62),26px)}
 .chip .cg{font-size:var(--gzf);line-height:1.12;font-weight:500;display:block}
 .chip .cs{
   font-family:var(--sans);font-variant-numeric:tabular-nums;font-feature-settings:"tnum";
-  font-size:clamp(8.5px,calc(var(--w) * .27),12px);
+  font-size:clamp(8.5px,calc(var(--tw) * .27),12px);
   line-height:1.3;color:var(--ink-soft);margin-top:2px;letter-spacing:-.02em;white-space:nowrap;
 }
 /* 流日約 30 格，硬塞一列每格只剩 10px；改成七欄日曆式，一週一列最好認。 */
-.chips.days{--n:7;gap:3px}
+/* 流日是七欄日曆式（三十格硬塞一列每格只剩 10px，一週一列最好認），
+   但七欄的格子寬到 43px，字級若照格寬給就會是流月的 1.7 倍——
+   同一張卡片上四列，最下面那列反而最大，看起來像另一個元件。
+   所以**排版尺度改按十二欄給**（＝流月那一列的量），格子仍是七欄、
+   多出來的寬度留給左右留白。字級、標記大小、標記位置全部一起跟著統一。
+   （2026-08-17i。欄距也由 3px 收到 2px，與其餘三列一致。） */
+.chips.days{--n:7;gap:2px;--tw:calc((100cqw - 11 * 2px) / 12)}
+@supports not (container-type:inline-size){
+  .chips.days{--tw:calc((min(100vw, 560px) - var(--pad)*2 - 28px - 11 * 2px) / 12);}
+}
 .chips.days .chip{padding:4px 0 3px}
 /* 紅色語義拆分（2026-07-31）。原本硃紅同時代表火五行、日主、選取、今年、標題，
    而且全部用「整格紅框」這一種載體，所以看到紅框無法判斷是哪一種。
@@ -1232,7 +1244,7 @@ footer .ft-more>div:last-child{opacity:.8}
 .chip.now{position:relative}
 .chip.now::after{
   content:"今";position:absolute;top:1px;right:2px;
-  font-family:var(--serif);font-size:clamp(7.5px,calc(var(--w) * .24),11px);
+  font-family:var(--serif);font-size:clamp(7.5px,calc(var(--tw) * .24),11px);
   line-height:1;color:var(--zhu);
 }
 .chip.cross{position:relative}
@@ -1253,7 +1265,8 @@ footer .ft-more>div:last-child{opacity:.8}
    才跟大運逐欄對齊的——一列捲、一列不捲，兩者就永久錯位。
    2026-08-05 那次走位就是這個坑（當時是兩邊各寫死不同的欄數）。
    所以這裡只換視覺載體，grid-template-columns:repeat(--n,1fr) 與 gap:2px 照舊。
-   （九步大運在 375px 上每欄約 34px，塞得下 4 位數年份＋歲數，字級一律用 --w 量。） */
+   （九步大運在 375px 上每欄約 34px，塞得下 4 位數年份＋歲數，字級一律用 --w 量。）
+
    （2026-08-17d 第二步：真機確認大運列與流年矩陣仍逐欄對齊之後，
     同一套載體推到流年橫排／流月／流日。四列的閱讀順序統一成
     「何時 → 什麼」——定位字在上、干支在下。
@@ -1271,7 +1284,7 @@ footer .ft-more>div:last-child{opacity:.8}
 .chips.tl.tl2 .chip .cg:first-of-type{margin-top:5px}
 .chips.tl .chip .cy{
   font-family:var(--sans);font-variant-numeric:tabular-nums;font-feature-settings:"tnum";
-  font-size:clamp(7.5px,calc(var(--w) * .22),10.5px);
+  font-size:clamp(7.5px,calc(var(--tw) * .22),10.5px);
   line-height:1.2;color:var(--ink-faint);letter-spacing:0;white-space:nowrap;
 }
 .chips.tl .chip .cs{margin-top:1px;color:var(--ink-faint)}
@@ -1289,8 +1302,9 @@ footer .ft-more>div:last-child{opacity:.8}
    一是那條線與「選取」的淡底疊在同一格時，讀起來像在標示選取而不是「現在」；
    二是「今」在矩陣裡是右上角、在 timeline 裡是底部置中，同一個字兩個位置。
    現在四列與矩陣統一：**現在＝右上角一個「今」**，選取＝一塊淡底，各一個載體。
-   （所以這裡不再有任何覆寫，直接沿用 .chip.now::after 的右上角定位。） */
-.chips.tl .chip.now::after{font-size:clamp(7.5px,calc(var(--w) * .22),10.5px)}
+   （2026-08-17h 起改為對齊天干那一行，見下方 .chips.tl .chip.now::after 的定位規則；
+    08-17g 曾在這裡留一條只設 font-size 的規則，已被下方那條完全覆蓋，刪除——
+    同一個元件的樣式散在兩處，正是這一輪除錯花掉最多時間的東西。） */
 /* 這裡刻意**不**把「現在」那格的干支染成朱色。
    干支字的顏色是五行（.fire/.wood/… 都是 0,1,0），而
    `.chips.tl .chip.now .cg` 是 0,3,0，直接寫上去會蓋掉五行色——
@@ -1319,7 +1333,7 @@ footer .ft-more>div:last-child{opacity:.8}
      而大運只疊 12%——那正是你說「適合」的那個量。
      改成 clamp(6px, w*.26, 10px) 之後四列一律落在 10–12.5%，
      大運幾乎不動（12.2%→10.5%），流月的今 27%→12.5%、交 38.5%→12.5%。 */
-  font-size:clamp(6px,calc(var(--w) * .26),10px);
+  font-size:clamp(6px,calc(var(--tw) * .26),10px);
 }
 .chips.tl .chip.now::after{right:1px}
 .chips.tl .chip .crossmark{left:1px}
