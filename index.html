@@ -1470,10 +1470,13 @@ footer .ft-more>div:last-child{opacity:.8}
   line-height:1;color:var(--zhu);
 }
 .chip.cross{position:relative}
+/* 已交＝既成事實（實朱深）；將交＝預告（淡一階）。
+   兩者形狀相同、只差深淺——它們是同一件事的兩個時態，不該長成兩種東西。 */
 .crossmark{
   position:absolute;top:1px;left:2px;font-family:var(--serif);font-size:9px;
   line-height:1;color:var(--zhu-deep);
 }
+.crossmark.soon{color:var(--zhu-line)}
 .chip[disabled]{cursor:default}
 
 /* ── 大運 typographic timeline（2026-08-17d prototype）─────────────────
@@ -2548,24 +2551,41 @@ function transitionForYear(y){
   var x=Dayun.yearInfo(lastDy.model,y);
   return x&&x.crossesDayun?x:null;
 }
-/* 「交」只標在**現行運**（今運）那一欄（2026-08-17f）。
-   每一步大運都有一個跨運流年，全部標出來就是九個「交」平均散在矩陣上，
-   誰都不突出，等於沒有標記——反而把真正該看的干支壓掉。
-   與「今」配成一組：今運那一欄告訴你「你在這一運」，交告訴你「它幾月交出去」。
-   刻意用今運而不是選中的那一運：選取會跟著滑動，今運是固定的錨。 */
+/* 「交」標在**今運的兩端**：把你交進來的那一次、與把你交出去的那一次。
+   （2026-08-18 修正 08-17f。）
+
+   08-17f 把它收成「只標今運那一欄」，理由是九個「交」平均散開等於沒有標記——
+   那個理由仍然成立。但收得**過頭了**：真正回答「我已經換運了嗎」的那一次交運，
+   是**啟動今運**的那一次，而它落在**前一欄**（該年的立春早於交運日，
+   所以那個流年歸屬前一步大運），剛好被濾掉。
+   結果是使用者看得到「幾月會交出去」，卻看不到「幾月已經交進來」。
+
+   現在兩個都標，並在視覺上分開：已過的是既成事實（實朱），未到的是預告（淡朱）。
+   兩個標記，不是九個——原本的降噪目的沒有被推翻。 */
 function transitionForYearOf(di,y){
-  return di===currentDayunIndex()?transitionForYear(y):null;
+  var cur=currentDayunIndex();
+  if(cur<0)return null;
+  /* di===cur   → 今運交出去的那一次（未來）
+     di===cur-1 → 把你交進今運的那一次（已過）
+     其餘一律不標。 */
+  return (di===cur||di===cur-1)?transitionForYear(y):null;
 }
 function transitionText(x){
-  return x?'此流年於 '+fmtYmd(x.transitionLocal)+' 交入 '+x.transitionTo+' 運':'';
+  if(!x)return '';
+  var past=x.transitionAt!=null&&x.transitionAt<=NOW_WALL;
+  return '此流年'+(past?'已於 ':'將於 ')+fmtYmd(x.transitionLocal)+' 交入 '+x.transitionTo+' 運';
 }
 /* 「交」維持單獨一個字，不帶月份數字（2026-08-17g）。
    「精確到月」改用**下鑽**表達：點那一年之後，流月列會在交運那個月標「交」。
    在 34px 寬的年格裡塞「交5」，是把一個層級的資訊硬擠進另一個層級；
    而流月列本來就是「這一年的十二個月」，交運在哪個月，標在那裡才是它的位置。 */
+/* 已交／將交必須分得開——「過了那個月要看得出已經換運」正是這個標記的用途。
+   已過＝既成事實，用實朱；未到＝預告，用淡一階。讀屏那句也跟著換動詞。 */
 function transitionMark(x){
-  return x?'<span class="crossmark" aria-hidden="true">交</span>'
-    +'<span class="sr-only">，'+transitionText(x)+'</span>':'';
+  if(!x)return '';
+  var past=x.transitionAt!=null&&x.transitionAt<=NOW_WALL;
+  return '<span class="crossmark'+(past?' past':' soon')+'" aria-hidden="true">交</span>'
+    +'<span class="sr-only">，'+transitionText(x)+'</span>';
 }
 function renderBorn(c,dy){
   // label／value 兩欄對齊，label 淡、value 深；數字等寬。比整句散文好掃（規格 §4.4）。
@@ -2585,20 +2605,42 @@ function renderBorn(c,dy){
     el('chartSub').innerHTML='<span class="bz">'+studyBz.join(' ')+'</span>';
     return;
   }
-  var t=c.noTime?'時間不詳（時柱與起運僅供參考）':pad2(c.b.h)+':'+pad2(c.b.mi);
+    /* 反查來的盤：出生時間顯示為**區間**而不是一個假的分鐘。
+       castFromDate 是用窗口起點算的，但那一分鐘沒有任何證據支持，
+       寫成 18:00 會讓人以為那就是查到的出生時間。 */
+    var rw=c.reverseWindow;
+    var t=c.noTime?'時間不詳（時柱與起運僅供參考）'
+         :rw?'（四柱反查，只能定位到區間）'
+         :pad2(c.b.h)+':'+pad2(c.b.mi);
   // 晚子時把用了哪一派寫在盤上：兩派日柱不同，盤面若不自陳，日後拿出來看根本分不出是哪一張。
   // 這個標註做成可點的：晚子開關只在輸入頁、而且只在填了 23 時才出現，
   // 已經排完盤的人事後才聽說有另一派，原本完全沒有線索知道有得選。
   if(!c.noTime&&c.b.h===23)
     t+='　<button type="button" class="zilink" id="ziBack">晚子·日柱算'
       +(lateZi==='nextDay'?'次日':'當日')+'　改</button>';
-  var s=row('出生',c.b.y+'.'+pad2(c.b.m)+'.'+pad2(c.b.d)+'　'+t);
+  var s=rw?row('有效時間',esc(reverseIntervalText(rw.x)))
+          :row('出生',c.b.y+'.'+pad2(c.b.m)+'.'+pad2(c.b.d)+'　'+t);
   if(dy&&dy.qi){
     s+=row('起運',dy.qi.years+' 年 '+dy.qi.months+' 個月 '+dy.qi.days+' 天後　· 　'
       +(dy.fwd?'順行':'逆行'));
-    if(dy.model&&dy.model.firstStartLocal)
-      s+=row('交運',fmtYmd(dy.model.firstStartLocal)+' 起'
-        +(dy.precise?'（精確至日）':'（時間不詳，暫用中午估算）'));
+      if(dy.model&&dy.model.firstStartLocal){
+        /* 反查的交運日有一段**算得出來的**誤差帶：窗口兩端各排一次大運，
+           取第一步交運日的兩個端點。干支序列若在窗口內完全相同，一併寫明——
+           那是這張盤最值得信的部分，不該被「不精確」三個字連坐。 */
+        var sp=rw&&rw.span;
+        if(sp&&fmtYmd(sp.lo)!==fmtYmd(sp.hi))
+          s+=row('交運',fmtYmd(sp.lo)+'–'+fmtYmd(sp.hi)
+            /* 措辭刻意只用字集裡已有的字。第一版寫「交運日在此區間內」與
+               「九步大運干支不受影響」，帶進「內受影響」四個新字——
+               而要補這四個字就得重生字型，我沙箱裡只有 Linux 的 Noto TTC，
+               會換掉上一輪用官方 OTF 建的產物（08-18b 已踩過一次）。
+               意思一樣講得清楚，就沒有理由為了措辭去動一個我無法重現來源的二進位檔。 */
+            +'（四柱只定位到時辰，交運日於此區間）'
+            +(sp.same?'；九步大運干支相同':''));
+        else
+          s+=row('交運',fmtYmd(dy.model.firstStartLocal)+' 起'
+            +(rw?'（四柱反查，時辰內交運日相同）':dy.precise?'（精確至日）':'（時間不詳，暫用中午估算）'));
+      }
     // 續行的 label 留空即可（.bk 有固定寬度會撐出對齊），不要用全形空格假裝。
     s+=row('',['距'+termTW(dy.qi.jieName)+'（'+dy.qi.jieDate+'）',
                dy.qi.gapDays+' 天 '+dy.qi.gapHours+' 時'].join('　'));
@@ -2901,11 +2943,44 @@ function castFromPillars(p,meta){
   focusToday();redrawAll();showScreen('scChart',meta.screenOpts);
   return true;
 }
+/* 反查候選：**照常排出大運，但把不確定性算出來標在盤上**（2026-08-18）。
+
+   v2.1 把這條路改成 castFromPillars（＝四柱排盤的路徑），理由是
+   「四柱只能定位到區間，拿區間內任一分鐘推精確起運是造假」。原則對，
+   但代價是**沒有起運年，就生不出流年**——大運干支列得出來，點下去卻什麼都沒有。
+   使用者回報「八字反查不能使用」。
+
+   量過之後這個取捨不划算。以 1999.11.03 酉時（17:00–18:59）為例：
+     · 九步大運的**干支序列在整個窗口內完全相同**；
+     · 第一步交運日只在 2008.05.19–05.29 之間移動（±5 天）。
+   為了避開一個 ±5 天、而且**算得出來**的誤差，把整套運限拿掉，
+   等於用「什麼都不給」取代「給了但標明精度」。
+
+   所以改成：用窗口起點排盤，並**實際計算窗口兩端的交運日**當作誤差帶，
+   顯示在盤上。誤差是量出來的，不是估的，也不是藏起來的。 */
+function reverseDayunSpan(x){
+  var a=x.start||x, z=x.endExclusive;
+  if(!z)return null;
+  try{
+    var g=gender==='乾'||gender==='坤'?gender:'乾';
+    var lo=Dayun.build({y:a.y,m:a.m,d:a.d,h:a.h,mi:a.mi||0},g);
+    var hiMs=Date.UTC(z.y,z.m-1,z.d,z.h,z.mi||0,z.s||0)-60000;   // 窗口是半開，取最後一分鐘
+    var e=new Date(hiMs);
+    var hi=Dayun.build({y:e.getUTCFullYear(),m:e.getUTCMonth()+1,d:e.getUTCDate(),
+                        h:e.getUTCHours(),mi:e.getUTCMinutes()},g);
+    if(!lo.steps[0]||!hi.steps[0])return null;
+    return {lo:lo.steps[0].startLocal,hi:hi.steps[0].startLocal,
+            same:lo.steps.map(function(t){return t.pillar;}).join()===hi.steps.map(function(t){return t.pillar;}).join()};
+  }catch(e){return null;}
+}
 function castReverseCandidate(x,p){
-  return castFromPillars(p,{
-    source:'四柱反查候選（不是出生時間證明）',
-    dataNote:reverseDataNote(x)
-  });
+  var a=x.start||x;
+  castFromDate(a.y,a.m,a.d,a.h,a.mi||0,false);
+  /* 排完才掛窗口資訊並重畫出生列：castFromDate 會重設 chart，先掛會被蓋掉。
+     （順序反了完全沒效果，而畫面看起來只是「少了一行」。） */
+  chart.reverseWindow={x:x,span:reverseDayunSpan(x)};
+  renderBorn(chart,lastDy);
+  return true;
 }
 /* 讀干支下拉，回傳四柱陣列；不合法就顯示錯誤並回 null（呼叫端據此中止）。
    反查與只排四柱兩個模式共用——同一份讀值與檢查若各寫一遍，
