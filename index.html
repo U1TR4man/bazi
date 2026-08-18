@@ -816,9 +816,16 @@ input:focus,select:focus{
   transition:background-color .14s ease,color .14s ease,box-shadow .14s ease;
 }
 .seg button:last-child{border-right:0}
-/* 選取的淡塊改成上圓下方：底部的朱線是它的底邊，圓角切在那裡會斷掉。
-   （去了外框之後，這個圓角是畫面上唯一還在描述「控件形狀」的東西。） */
-.seg button.on{border-radius:var(--radius-control) var(--radius-control) 0 0}
+/* 選取的淡塊**四角全方**（2026-08-17o）。
+
+   08-17l 給它上圓下方，想留一點「控件形狀」的暗示。真機看下來那是錯的：
+   分隔線是**每一格自己的 border-right**，所以選取那一格的分隔線會跟著圓角
+   在頂端彎進去，而它右邊那一格的分隔線是直的——同一排兩種形狀。
+   （使用者原話：「這個頁面的直線邊，有一邊有 curve 有一邊冇」。）
+
+   把圓角拿掉，三條線全部筆直，色塊與分隔線、底部朱線三者對齊成一個矩形。
+   去了外框之後本來就不需要再描述控件形狀——色塊自己就是形狀。 */
+.seg button.on{border-radius:0}
 /* 選取的色塊＝ --band-yr，與命盤頁大運／流年／矩陣的選取**同一個 token**
    （2026-08-17k）。08-17f 已把命盤頁三處統一到 --band-yr，
    輸入頁的 segmented 卻還留著淡朱 --zhu-wash-2——
