@@ -2532,11 +2532,36 @@ function currentTransit(){
   }
   return out;
 }
+/* 以立春為界的十個流年。**矩陣一律用這一份**——90 格與大運列的欄軌
+   靠「每欄剛好十格」對齊，多一格就錯位。 */
 function yearsForDayun(d){
   if(d&&Array.isArray(d.years))return d.years;
   var out=[];
   if(d&&d.from!=null)for(var i=0;i<10;i++)out.push(d.from+i);
   return out;
+}
+/* 橫排流年**多收一個跨運年**（2026-08-18）。
+
+   兩種邊界本來就不同：大運以**交運時刻**為界、流年以**立春**為界。
+   交運落在年中時，那一年真的橫跨兩運——例如 2026.03.23 交入庚午，
+   2026 的 2/4–3/23 屬前一運、3/23 之後屬庚午。
+   把它整年歸給前一運是個約定，代價是：**今運的流年清單裡沒有今年**。
+   實測 1960.01.25 03:00 乾造，今運庚午的流年是 2027–2036，
+   於是 focusToday() 只能退而選 2027——打開盤看到的是明年。
+
+   所以橫排（實際在讀的那一列）把跨運年收進來，放在最前面並帶「交」標記；
+   **矩陣維持不動**，因為它的欄軌必須每欄十格。
+   同一年在兩種檢視下出現兩次，是這個模型的實情，不是重複。 */
+function yearsForRow(d){
+  var ys=yearsForDayun(d);
+  if(!ys.length||!lastDy||!lastDy.model||d.startAt==null)return ys;
+  var cy=ys[0]-1;
+  var info=null;
+  try{info=Dayun.yearInfo(lastDy.model,cy);}catch(e){return ys;}
+  /* 只收「交運時刻正好是這一步的起點」的那一年——
+     用 startAt 逐值比對，不用年份推測：推測會在閏年與立春前後出錯。 */
+  if(info&&info.crossesDayun&&info.transitionAt===d.startAt)return [cy].concat(ys);
+  return ys;
 }
 function currentDayunIndex(){
   if(lastDy&&lastDy.model)return Dayun.stepAt(lastDy.model,NOW_WALL);
@@ -2741,7 +2766,7 @@ el('btnGrid').addEventListener('click',function(){
 syncGridBtn();
 function renderLiunian(){
   if(selDayun<0){el('liunian').innerHTML='';return;}
-  var d=dayunList[selDayun],out='',years=yearsForDayun(d);
+  var d=dayunList[selDayun],out='',years=yearsForRow(d);
   if(!years.length){
     el('liunian').innerHTML='';
     el('yearNote').textContent=d.yearsError?'超出已核節氣表，這一步不列流年':d.gz+'運 · 未載起運年，暫不排流年';
@@ -2755,6 +2780,11 @@ function renderLiunian(){
       +'<span class="cs">'+String(y).slice(2)+'</span>'+stackGZ(yearGZ(y))
       +transitionMark(x)+(now?'<span class="sr-only">今年</span>':'')+'</button>';
   }
+  /* 欄數必須跟著實際個數走。收了跨運年之後這一列會是 11 格，
+     而 markup 裡寫死的是 --n:10——第 11 格會擠到第二行。
+     2026-08-05 大運那次踩過同一個坑（HTML 寫死 --n:9），修法一樣：
+     **兩邊都問同一個來源**，不要各自寫死。 */
+  el('liunian').style.setProperty('--n',Math.max(1,years.length));
   el('liunian').innerHTML=out;
   el('yearNote').textContent=d.startLocal&&d.endLocal
     ?d.gz+'運　'+fmtYmd(d.startLocal)+' 起 · '+fmtYmd(d.endLocal)+' 交下運'
@@ -2893,7 +2923,9 @@ function focusToday(){
     }
   }
   selDayun=idx;
-  var years=yearsForDayun(dayunList[idx]);
+  /* 用橫排那一份（含跨運年）來找今年：今運剛在年中交進來時，
+     今年只存在於這一份裡。用十年那一份會退而選明年。 */
+  var years=yearsForRow(dayunList[idx]);
   selYear=years.indexOf(NOW_YEAR)>=0?NOW_YEAR:(years.length?years[0]:null);
 }
 function castFromDate(y,m,d,hh,mi,noTime){
