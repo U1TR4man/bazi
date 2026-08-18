@@ -1131,11 +1131,33 @@ footer .ft-more>div:last-child{opacity:.8}
 .wood{color:var(--wood)}.fire{color:var(--fire)}.earth{color:var(--earth)}.metal{color:var(--metal)}.water{color:var(--water)}
 /* 出生與起運是查核用的補充資訊，不是分析對象——字級與行距都收到最小，
    讓視線停在上方的干支，需要時再低頭看。 */
-.born{
-  font-variant-numeric:tabular-nums;font-feature-settings:"tnum";
-  font-size:10.5px;color:var(--ink-soft);line-height:1.45;
+/* 圈點收放。整塊（鈕＋內容）共用一條上緣細線，所以線畫在 wrapper 上，
+   .born 自己不再畫——兩邊各畫一條會在收起時留下一條孤線。 */
+.bornwrap{
+  display:flex;align-items:flex-start;gap:8px;
   margin:8px 0 0;padding-top:7px;border-top:1px solid var(--line-soft);
 }
+.bornfold{
+  flex:0 0 auto;border:0;background:transparent;cursor:pointer;
+  /* 圖形只有 10px，但可點面積要夠：靠 padding 撐開，不放大圖形本身。
+     負的左外距讓圓點在視覺上對齊卡片左緣，而不是被 padding 推進去。 */
+  padding:6px 7px;margin:-6px 0 -6px -7px;line-height:0;color:var(--zhu-line);
+  transition:color .14s ease;
+}
+.bornfold svg{width:11px;height:11px;display:block;overflow:visible}
+.bornfold .ring{fill:none;stroke:currentColor;stroke-width:1}
+/* 實心點用朱：它與「今」「日主」同類，是命理閱讀的標記層。
+   直徑只有 4.6px，不會與排盤 CTA 或印章搶那個「大面積朱紅」的角色。 */
+.bornfold .dot{fill:var(--zhu);transition:opacity .14s ease,transform .14s ease;transform-origin:7px 7px}
+.bornfold[aria-expanded="false"]{color:var(--line-strong)}
+.bornfold[aria-expanded="false"] .dot{opacity:0;transform:scale(.4)}
+@media (hover:hover){.bornfold:hover{color:var(--zhu)}}
+.born{
+  flex:1 1 auto;min-width:0;
+  font-variant-numeric:tabular-nums;font-feature-settings:"tnum";
+  font-size:10.5px;color:var(--ink-soft);line-height:1.45;
+}
+.born[hidden]{display:none}
 .born b{color:var(--ink);font-weight:500}
 .brow{display:flex;gap:8px;align-items:baseline}
 /* 標籤欄一律 nowrap。字級縮小後 2.4em 塞不下「出生」兩字加字距，
@@ -1288,7 +1310,19 @@ footer .ft-more>div:last-child{opacity:.8}
 .chips.tl .chip.now::after,
 .chips.tl .chip .crossmark{
   top:auto;bottom:calc(var(--tl-pb) + var(--gzf) * 1.68 - 0.5em);
+  /* 標記字級改成**純比例**，並把左右內縮由 2px 收到 1px（2026-08-17h 第二次）。
+     流月的「今」壓在「丙」上，原因不是位置而是**大小**：
+       ·「今」原本是 clamp(7.5px, w*.24, 11px)——12 欄時 w*.24 只有 6px，
+         下限 7.5px 於是接管，窄欄反而拿到相對最大的標記；
+       ·「交」更直接，字級是寫死的 9px，完全不隨欄寬縮。
+     量過（干支墨水約 0.86em）：流月的今疊掉丙 27%、交疊掉 38%，
+     而大運只疊 12%——那正是你說「適合」的那個量。
+     改成 clamp(6px, w*.26, 10px) 之後四列一律落在 10–12.5%，
+     大運幾乎不動（12.2%→10.5%），流月的今 27%→12.5%、交 38.5%→12.5%。 */
+  font-size:clamp(6px,calc(var(--w) * .26),10px);
 }
+.chips.tl .chip.now::after{right:1px}
+.chips.tl .chip .crossmark{left:1px}
 @media (hover:hover){
   .chips.tl .chip:not(.on):hover{background:var(--band)}
 }
@@ -1565,7 +1599,21 @@ footer{text-align:center;font-size:11.5px;color:var(--ink-soft);padding:16px 6px
 
   <div class="card">
     <div class="chartwrap"><div class="chart" id="chart"></div></div>
-    <div class="born" id="born"></div>
+    <!-- 出生／起運／交運這一塊是「查證用」的資料：排完盤想核對時要看，
+         平常看盤時只是四行小字佔著版面。給它一個收放，但不給它一行標題文字——
+         多一行「詳細資料」反而比它想收起來的東西還重。
+         載體用**圈點**：傳統批註在字旁畫圈與點，實心＝有批註在此、空心＝收起。
+         這是這一套視覺裡本來就有的語言，不是再借一個現代 UI 圖示。 -->
+    <div class="bornwrap">
+      <button type="button" class="bornfold" id="bornFold"
+              aria-expanded="true" aria-controls="born" aria-label="收合出生與起運資料">
+        <svg viewBox="0 0 14 14" aria-hidden="true" focusable="false">
+          <circle class="ring" cx="7" cy="7" r="5.1"/>
+          <circle class="dot"  cx="7" cy="7" r="2.3"/>
+        </svg>
+      </button>
+      <div class="born" id="born"></div>
+    </div>
   </div>
 
   <div class="card">
@@ -1916,6 +1964,19 @@ el('btnOrder').addEventListener('click',function(){
   if(chart)redrawAll();
 });
 syncOrderBtn();
+/* 圈點收放。純顯示層：不碰 localStorage（那是本工具唯一寫入的東西，
+   目前只存排法與矩陣偏好，不為了一個摺疊狀態再多寫一筆），
+   也不碰任何排盤結果——收起來只是不顯示，資料仍在 DOM 裡，讀屏照樣讀得到順序。 */
+el('bornFold').addEventListener('click',function(){
+  /* 狀態的真相是「內容有沒有被隱藏」，不是 aria-expanded。
+     第一版從 aria 反推，等於把無障礙屬性當成狀態儲存體：
+     它一旦與實際顯示不同步（例如別處改了 hidden），按鈕就會反向操作。
+     aria 是**輸出**，跟著真相走。 */
+  var open=!el('born').hidden;
+  el('born').hidden=open;
+  this.setAttribute('aria-expanded',String(!open));
+  this.setAttribute('aria-label',open?'展開出生與起運資料':'收合出生與起運資料');
+});
 function showScreen(id,opts){
   ['scInput','scChart'].forEach(function(x){el(x).classList.toggle('on',x===id);});
   window.scrollTo(0,0);
