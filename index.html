@@ -1204,28 +1204,33 @@ footer .ft-more>div:last-child{opacity:.8}
 }
 /* 干支字級抽成 --gzf：下面「今／交」要對齊天干那一行，必須用同一個值算位置。
    兩處各寫一次 clamp()，改了一邊忘了另一邊，標記就會慢慢飄離天干。 */
-/* --tw＝**排版尺度**，與 --w（實際格寬）分開。
-   預設兩者相同；只有流日不同——見下方 .chips.days。 */
-.chips{--tw:var(--w)}
-.chip{--gzf:clamp(13px,calc(var(--tw) * .62),26px)}
+/* 「今」與「交」在**四列與矩陣一律同一個大小**：一律按九欄的量給。
+   （2026-08-17j。使用者：「統一今字的大小，在手機上流年那個最舒服」——
+    流年矩陣是九欄，所以九欄的量就是那個舒服的量。
+    不跟著各列自己的欄寬縮：那樣大運的今會比流月的大 36%，
+    同一個字在同一張卡上有四種大小，本身就是不統一。）
+   矩陣的 --w 正好就是九欄寬，所以兩邊算出來的值逐 px 相同。 */
+.chips,.ygrid{--mk:clamp(6.5px,calc((100cqw - 8 * 2px) / 9 * .2),9px)}
+@supports not (container-type:inline-size){
+  .chips,.ygrid{--mk:clamp(6.5px,calc((min(100vw, 560px) - var(--pad)*2 - 28px - 8 * 2px) / 9 * .2),9px)}
+}
+.chip{--gzf:clamp(13px,calc(var(--w) * .62),26px)}
 .chip .cg{font-size:var(--gzf);line-height:1.12;font-weight:500;display:block}
 .chip .cs{
   font-family:var(--sans);font-variant-numeric:tabular-nums;font-feature-settings:"tnum";
-  font-size:clamp(8.5px,calc(var(--tw) * .27),12px);
+  font-size:clamp(8.5px,calc(var(--w) * .27),12px);
   line-height:1.3;color:var(--ink-soft);margin-top:2px;letter-spacing:-.02em;white-space:nowrap;
 }
 /* 流日約 30 格，硬塞一列每格只剩 10px；改成七欄日曆式，一週一列最好認。 */
-/* 流日是七欄日曆式（三十格硬塞一列每格只剩 10px，一週一列最好認），
-   但七欄的格子寬到 43px，字級若照格寬給就會是流月的 1.7 倍——
-   同一張卡片上四列，最下面那列反而最大，看起來像另一個元件。
-   所以**排版尺度改按十二欄給**（＝流月那一列的量），格子仍是七欄、
-   多出來的寬度留給左右留白。字級、標記大小、標記位置全部一起跟著統一。
-   （2026-08-17i。欄距也由 3px 收到 2px，與其餘三列一致。） */
-.chips.days{--n:7;gap:2px;--tw:calc((100cqw - 11 * 2px) / 12)}
-@supports not (container-type:inline-size){
-  .chips.days{--tw:calc((min(100vw, 560px) - var(--pad)*2 - 28px - 11 * 2px) / 12);}
-}
-.chips.days .chip{padding:4px 0 3px}
+/* 流日改成**十二欄，與流月完全相同**（2026-08-17j）。
+   原本是七欄「日曆式」，但每一列的起點是節氣日而不是星期一，
+   所以那個「一週一列」其實對不齊任何星期——理由不成立，
+   換來的卻是格子寬到 43px、字級是流月的 1.7 倍、三十一天佔掉五列。
+   改十二欄之後：格寬、字級、行高、標記大小全部與流月逐項相同，
+   三十一天只要三列。使用者要的「視覺統一」與「縮排」是同一件事的兩面。
+   （因此 08-17i 引入的 --tw「排版尺度」也一併移除——
+    每一列的排版尺度重新等於自己的格寬，那層間接就沒有存在理由了。） */
+.chips.days{--n:12;gap:2px}
 /* 紅色語義拆分（2026-07-31）。原本硃紅同時代表火五行、日主、選取、今年、標題，
    而且全部用「整格紅框」這一種載體，所以看到紅框無法判斷是哪一種。
    規則不是「一種顏色只准一個意思」——火五行本來就該是紅字，改不掉也不該改；
@@ -1244,7 +1249,7 @@ footer .ft-more>div:last-child{opacity:.8}
 .chip.now{position:relative}
 .chip.now::after{
   content:"今";position:absolute;top:1px;right:2px;
-  font-family:var(--serif);font-size:clamp(7.5px,calc(var(--tw) * .24),11px);
+  font-family:var(--serif);font-size:clamp(7.5px,calc(var(--w) * .24),11px);
   line-height:1;color:var(--zhu);
 }
 .chip.cross{position:relative}
@@ -1277,14 +1282,14 @@ footer .ft-more>div:last-child{opacity:.8}
   background:transparent;border:0;border-radius:0;
   padding:6px 0 var(--tl-pb);min-height:var(--tl-h);justify-content:flex-start;
 }
-/* 流日那一列的 .chips.days .chip{padding:4px 0 3px} 與上面同分（0,3,0），
-   同分就只能靠書寫順序決勝——本檔已經因為這種平手讓整條色帶消失過一次。
-   這裡用 0,4,0 明確蓋掉，規則搬到哪裡結果都一樣。 */
-.chips.days.tl.tl2 .chip{padding:6px 0 var(--tl-pb)}
+/* （2026-08-17j：流日原本另有一條 .chips.days .chip{padding:4px 0 3px}，
+   與 .chips.tl .chip 同分 0,3,0 而需要一條 0,4,0 去壓。現在那條已刪，
+   流日與其餘三列走同一條規則，平手的來源本身消失了——
+   比起加特異性去贏，把打架的規則拿掉才是真的解決。） */
 .chips.tl.tl2 .chip .cg:first-of-type{margin-top:5px}
 .chips.tl .chip .cy{
   font-family:var(--sans);font-variant-numeric:tabular-nums;font-feature-settings:"tnum";
-  font-size:clamp(7.5px,calc(var(--tw) * .22),10.5px);
+  font-size:clamp(7.5px,calc(var(--w) * .22),10.5px);
   line-height:1.2;color:var(--ink-faint);letter-spacing:0;white-space:nowrap;
 }
 .chips.tl .chip .cs{margin-top:1px;color:var(--ink-faint)}
@@ -1323,7 +1328,13 @@ footer .ft-more>div:last-child{opacity:.8}
    左右不動：交在左、今在右，天干正好被兩個標記夾在中間。 */
 .chips.tl .chip.now::after,
 .chips.tl .chip .crossmark{
-  top:auto;bottom:calc(var(--tl-pb) + var(--gzf) * 1.68 - 0.5em);
+  /* 貼齊**天干的右上角**，與矩陣裡「今」對干支的關係一致
+     （2026-08-17j。原本是垂直置中於天干那一行；矩陣那個是貼在字的右上，
+      使用者說矩陣那個最舒服，所以統一成同一種關係，不是同一個座標——
+      兩邊的幾何不同，能統一的是「貼哪個角」。）
+     由下緣量：下緣留白 + 地支一整行 + 天干一整行 − 標記自身一行
+     ＝ 標記上緣切齊天干那一行的上緣。 */
+  top:auto;bottom:calc(var(--tl-pb) + var(--gzf) * 2.24 - 1em);
   /* 標記字級改成**純比例**，並把左右內縮由 2px 收到 1px（2026-08-17h 第二次）。
      流月的「今」壓在「丙」上，原因不是位置而是**大小**：
        ·「今」原本是 clamp(7.5px, w*.24, 11px)——12 欄時 w*.24 只有 6px，
@@ -1333,10 +1344,12 @@ footer .ft-more>div:last-child{opacity:.8}
      而大運只疊 12%——那正是你說「適合」的那個量。
      改成 clamp(6px, w*.26, 10px) 之後四列一律落在 10–12.5%，
      大運幾乎不動（12.2%→10.5%），流月的今 27%→12.5%、交 38.5%→12.5%。 */
-  font-size:clamp(6px,calc(var(--tw) * .26),10px);
+  font-size:var(--mk);
 }
-.chips.tl .chip.now::after{right:1px}
-.chips.tl .chip .crossmark{left:1px}
+/* 內縮 0：十二欄時格子只有 25px，干支墨水佔 13.4px，兩側各剩 5.8px，
+   標記 6.8px——留 1px 內縮就會多疊掉一半。貼齊格緣，欄距 2px 仍與鄰欄分得開。 */
+.chips.tl .chip.now::after{right:0}
+.chips.tl .chip .crossmark{left:0}
 @media (hover:hover){
   .chips.tl .chip:not(.on):hover{background:var(--band)}
 }
@@ -1427,12 +1440,12 @@ footer .ft-more>div:last-child{opacity:.8}
    「今」字已經自解釋，不需要再借第二個載體。 */
 .ycell.now::after{
   content:"今";position:absolute;top:0;right:1px;line-height:1;
-  font-size:clamp(6.5px,calc(var(--w) * .2),9px);color:var(--zhu);
+  font-size:var(--mk);color:var(--zhu);
 }
 /* 交在左上、今在右上——兩個標記各佔一角，同一格同時出現也不會疊。
    （2026-08-17g 一度把交也移到右上再靠位移讓開，那要多兩條規則去處理碰撞；
     分佔兩角本來就不會碰，不必先製造問題再解決。） */
-.ycell .crossmark{top:0;left:1px;font-size:clamp(6.5px,calc(var(--w) * .2),9px)}
+.ycell .crossmark{top:0;left:1px;font-size:var(--mk)}
 .griderr{
   grid-column:1/-1;font-family:var(--sans);font-size:12px;line-height:1.55;
   color:var(--ink-soft);padding:7px 3px;text-align:left;
@@ -1651,7 +1664,7 @@ footer{text-align:center;font-size:11.5px;color:var(--ink-soft);padding:16px 6px
     </div>
     <div class="step" id="stepDay">
       <h2>流日<small id="dayNote"></small></h2>
-      <div class="chips days tl tl2" id="liuri" style="--n:7"></div>
+      <div class="chips days tl tl2" id="liuri" style="--n:12"></div>
     </div>
   </div>
 
