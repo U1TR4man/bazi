@@ -3001,7 +3001,15 @@ function reverseDayunSpan(x){
     var hi=Dayun.build({y:e.getUTCFullYear(),m:e.getUTCMonth()+1,d:e.getUTCDate(),
                         h:e.getUTCHours(),mi:e.getUTCMinutes()},g);
     if(!lo.steps[0]||!hi.steps[0])return null;
-    return {lo:lo.steps[0].startLocal,hi:hi.steps[0].startLocal,
+    /* **端點必須排序，不能假設窗口起點給出較早的交運日。**
+       順行的盤是反過來的：出生越晚 → 離下一個節越近 → 起運越小 → 交運越早。
+       實測 1991.01.17 寅時（順行）：03:00 給 1997.03.23、04:59 給 1997.03.15，
+       直接照窗口順序輸出就會印成「1997.03.23–1997.03.15」——區間反了。
+       （這個 bug 是使用者用自己的八字反查時，我在他的畫面輸出裡看到的。） */
+    var a1=lo.steps[0].startLocal, b1=hi.steps[0].startLocal;
+    var key=function(o){return o.year*10000+o.month*100+o.day;};
+    if(key(a1)>key(b1)){var t=a1;a1=b1;b1=t;}
+    return {lo:a1,hi:b1,
             same:lo.steps.map(function(t){return t.pillar;}).join()===hi.steps.map(function(t){return t.pillar;}).join()};
   }catch(e){return null;}
 }
