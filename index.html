@@ -2693,8 +2693,18 @@ function renderDayun(){
       +' aria-pressed="'+(i===selDayun)+'"'+(title?' title="'+esc(title)+'"':'')+'>'
       /* timeline 的閱讀順序是「哪一年 → 幾歲 → 什麼干支」，
          所以年份與歲數放在干支之前。兩者都可能沒有（書載大運未必標歲或年），
-         缺了就整個 span 不輸出，不留空位撐版面。 */
-      +(d.from!=null?'<span class="cy">'+d.from+'</span>':'')
+         缺了就整個 span 不輸出，不留空位撐版面。
+
+         年份用**交運年**，不是第一個流年（2026-08-18h 修）。
+         原本 .cy 取 d.from（＝第一個流年），而 .cs 取 startAge（＝交運當下的歲）——
+         **兩個數字量的不是同一個時點**：1990.01.01 生的第三步，
+         格子印「2019 / 28歲」，但交運其實在 2018.05，28 歲也是 2018 那一刻算的。
+         改成交運年之後，「1998 / 8歲 / 乙亥」讀起來就是同一句話：
+         1998 年、八歲、交入乙亥——與上方「起運 8 年 4 個月 3 天後」「交運 1998.05.04」一致，
+         也與橫排流年的第一格（跨運年）對上。
+         書載大運未必有 startLocal，退回 d.from。 */
+      +(d.startLocal&&d.startLocal.year!=null?'<span class="cy">'+d.startLocal.year+'</span>'
+        :d.from!=null?'<span class="cy">'+d.from+'</span>':'')
       +(d.age!=null?'<span class="cs">'+d.age+'歲</span>':'')
       +stackGZ(d.gz)
       +(range?'<span class="sr-only">，'+range+'</span>':'')
@@ -2814,7 +2824,12 @@ function renderLiuyue(){
      （已知限制：若交運日剛好就是交節日，00:00 會被判給前一個月。
       掃過 12,096 張盤沒出現這種重合，但它在原理上可能發生；
       真要修得動引擎那一層的精度，不是這裡。） */
-  var xt=transitionForYearOf(selDayun,selYear),xIdx=-1;
+  /* 流月的「交」**不受今運限制**（2026-08-18h，使用者指定）。
+     年格保持安靜——只有今運兩端標「交」，否則九個標記平均散開等於沒有標記；
+     但一旦點進某一年的流月，就該把那一年的交運月講出來，
+     不論它屬於過去還是未來的哪一步大運：斷過往、推未來都要用到。
+     「安靜的總覽 ＋ 完整的下鑽」是這裡的分工。 */
+  var xt=transitionForYear(selYear),xIdx=-1;
   if(xt&&xt.transitionAt!=null){
     for(var j=0;j<ms.length;j++){
       var ja=wall(ms[j]);
