@@ -781,10 +781,17 @@ input:focus,select:focus{
 
    整組做成一個 shell：外框一圈、內部用分隔線，看起來才像「三選一」，
    而不是三顆各自帶框的平級按鈕。46px touch target 不動。 */
+/* 去外框，只留內部分隔線（2026-08-17l，B 案）。
+   08-17b 把三顆各自帶框的按鈕改成一個 shell，方向是對的；
+   但 shell 本身仍是一個矩形，一張卡上三組控件加兩個輸入框就是五道矩形，
+   讀起來像五個盒子疊在一起，而不是一頁資料。
+
+   去掉的是**外框**，留下的是**內部分隔線**——後者才是真正有用的訊息
+   （「這幾格是一組、彼此互斥」）；外框只是把那組東西再裝進一個容器，
+   而容器的邊界本來就由標籤與留白說清楚了。
+   底色也一併去掉：它存在的理由是撐出 shell 的形狀，形狀沒了就沒有理由。 */
 .seg{
   display:flex;gap:0;margin:0 0 12px;
-  border:1px solid var(--line);border-radius:var(--radius-control);overflow:hidden;
-  background:rgba(255,253,247,.55);
 }
 .seg button{
   flex:1;padding:10px 4px;font-family:var(--sans);font-size:15px;color:var(--ink);cursor:pointer;
@@ -793,6 +800,9 @@ input:focus,select:focus{
   transition:background-color .14s ease,color .14s ease,box-shadow .14s ease;
 }
 .seg button:last-child{border-right:0}
+/* 選取的淡塊改成上圓下方：底部的朱線是它的底邊，圓角切在那裡會斷掉。
+   （去了外框之後，這個圓角是畫面上唯一還在描述「控件形狀」的東西。） */
+.seg button.on{border-radius:var(--radius-control) var(--radius-control) 0 0}
 /* 選取的色塊＝ --band-yr，與命盤頁大運／流年／矩陣的選取**同一個 token**
    （2026-08-17k）。08-17f 已把命盤頁三處統一到 --band-yr，
    輸入頁的 segmented 卻還留著淡朱 --zhu-wash-2——
@@ -886,8 +896,12 @@ label.f>span small{
 
 /* 模式切換做成一個 control shell：外框一圈、內部用分隔線，
    看起來才像「三選一」，而不是三顆平級的 CTA。 */
-.seg.mode-seg{gap:0;border:1px solid var(--line);border-radius:var(--radius-control);overflow:hidden}
-.seg.mode-seg button{border:0;border-right:1px solid var(--line);border-radius:0}
+/* 排盤方式的分隔線比其餘兩組深一階（--line vs --line-soft）：
+   它是主模式切換，三格之間的分界該比「男／女」明確一點。
+   （2026-08-17l：外框連同 overflow:hidden 一起移除——
+    overflow 當初是為了讓子元素的方角不要戳出 shell 的圓角，shell 沒了就多餘。） */
+.seg.mode-seg{gap:0}
+.seg.mode-seg button{border:0;border-right:1px solid var(--line)}
 .seg.mode-seg button:last-child{border-right:0}
 .seg.compact button{font-size:14px;padding:10px 2px}
 
@@ -942,7 +956,10 @@ label.f>span small{
   padding:11px 12px;margin:0 0 var(--s3);
 }
 #ziPane>span{display:block;color:var(--zhu-deep);font-weight:500;margin-bottom:8px}
-#ziPane .seg{margin:0 0 2px;background:rgba(255,253,247,.7)}
+/* 晚子面板裡的那組也去底色（2026-08-17l）：它原本用一層更亮的底把控件
+   從朱洗色的面板上「浮」起來，等於在面板裡再畫一個容器。
+   面板本身已經有底色與左側朱邊，控件不需要再自帶一個。 */
+#ziPane .seg{margin:0 0 2px}
 
 /* 未知時間說明改用同一套材質，維持「狀態不是錯誤」的語言 */
 .note-box{background:var(--zhu-wash-2);border-left-color:var(--zhu-line)}
