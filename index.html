@@ -907,6 +907,17 @@ label.f>span small{
   letter-spacing:.04em;margin-left:6px;font-weight:400;
 }
 .field-label{display:block;font-size:13px;color:var(--ink-soft);margin:0 0 5px;letter-spacing:.04em}
+/* 「不知道確切時間？」＝tertiary 文字鈕，靠右。不給框也不給底：
+   它是一句給少數人看的提示，不是要與「出生時間」搶注意力的控件。 */
+.tm-head{display:flex;justify-content:flex-end;margin:-2px 0 2px}
+.tmmore{
+  font-family:var(--sans);font-size:12.5px;letter-spacing:.02em;
+  border:0;background:transparent;color:var(--ink-faint);cursor:pointer;
+  padding:8px 2px;min-height:44px;   /* 字小，可點面積靠 padding 撐開 */
+  text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--line-strong);
+  transition:color .14s ease;
+}
+@media (hover:hover){.tmmore:hover{color:var(--ink-soft)}}
 .time-mode{margin:0 0 12px}
 .time-mode .seg{margin:0}
 
@@ -1576,7 +1587,21 @@ footer{text-align:center;font-size:11.5px;color:var(--ink-soft);padding:16px 6px
            填了時間之後時辰選單還算不算？勾了不知道，上面兩個怎麼辦？
            改成互斥之後，畫面上永遠只有當下那一種。
            底層仍用原有的 inTime／inHourBranch／inNoTime，castFromDate 與曆法一行未動。 -->
-      <div class="time-mode">
+      <!-- 時間精度預設收起（2026-08-17n，B 案）。
+           三態互斥解決的是「三個欄位同時出現」，但那三顆按鈕本身也是一層——
+           而絕大多數人知道自己幾點生，那一層對他們永遠是雜訊。
+           改成預設只出現「出生時間」，右側一行小字才展開三態。
+
+           **一次性展開，不提供收合**：收合的唯一用途是回到「精確時間」，
+           而那本來就是預設值；多一顆會收東西的按鈕等於多一個要理解的狀態。
+           另有一條硬規則寫在 setTimeMode()：只要目前不是「精確時間」，
+           三態一律強制展開——絕不能把解釋目前狀態的那個控件藏起來
+           （快速輸入、還原上次輸入都可能在使用者沒點過那行小字的情況下切換精度）。 -->
+      <div class="tm-head" id="tmHead">
+        <button type="button" class="tmmore" id="btnTmMore"
+                aria-expanded="false" aria-controls="tmWrap">不知道確切時間？</button>
+      </div>
+      <div class="time-mode" id="tmWrap" hidden>
         <span class="field-label" id="tmLabel">時間資料</span>
         <div class="seg compact" id="segTimeMode" role="group" aria-labelledby="tmLabel">
           <button type="button" data-tm="exact" class="on" aria-pressed="true">精確時間</button>
@@ -1902,12 +1927,27 @@ el('segMode').addEventListener('click',function(e){
    程式本來就有 disable 與同步邏輯，但**UI 沒有把互斥關係表達出來**，
    所以那份理解成本全丟給使用者。 */
 var timeMode='exact';   // exact｜branch｜unknown
+/* 展開三態。一次性、不可逆——見 DOM 那段註解。
+   刻意**不加「已展開就早退」的判斷**：那會讓這個函式的行為取決於
+   HTML 屬性的初始值，而屬性初始值是外部狀態。無條件把三件事設成同一個結果，
+   呼叫幾次都一樣，也才驗得到。（2026-08-17h 的圈點收放踩過同一個坑：
+   從 aria 反推狀態，等於把無障礙屬性當成狀態儲存體。） */
+function revealTimeMode(){
+  el('tmWrap').hidden=false;
+  el('tmHead').hidden=true;
+  el('btnTmMore').setAttribute('aria-expanded','true');
+}
 function setTimeMode(m,opts){
   timeMode=(m==='branch'||m==='unknown')?m:'exact';
   el('segTimeMode').querySelectorAll('button').forEach(function(x){
     var on=x.dataset.tm===timeMode;
     x.classList.toggle('on',on);x.setAttribute('aria-pressed',on);
   });
+  /* 硬規則：只要不是「精確時間」，三態一律強制展開。
+     絕不能把解釋目前狀態的控件藏起來——快速輸入與還原上次輸入都可能
+     在使用者沒點過那行小字的情況下切換精度，屆時畫面上會出現
+     「出生時辰」這個欄位卻沒有任何東西說明為什麼。 */
+  if(timeMode!=='exact')revealTimeMode();
   el('paneExactTime').hidden=timeMode!=='exact';
   el('paneBranchTime').hidden=timeMode!=='branch';
   el('paneUnknownTime').hidden=timeMode!=='unknown';
@@ -2030,7 +2070,8 @@ function syncOrderBtn(){
 el('btnOrder').addEventListener('click',function(){
   revOrder=!revOrder;
   try{localStorage.setItem(ORDER_KEY,revOrder?'rev':'std');}catch(e){}
-  syncOrderBtn();renderGzInputs();
+  el('btnTmMore').addEventListener('click',revealTimeMode);
+syncOrderBtn();renderGzInputs();
   if(chart)redrawAll();
 });
 syncOrderBtn();
@@ -2162,6 +2203,24 @@ function calcShenGong(p){
 /* 未知時辰時，身宮與命宮不得拿暫用的中午時柱冒充——那等於憑空捏造。
    但「只排四柱」與書載四柱雖然也沒有生日（noTime 為 true），時柱卻是明確給定的，
    所以以 c.study 為準：有 study 就代表時柱可信。胎元只看月柱，不受時辰影響。 */
+/* 時辰不詳時，時柱以「*」顯示（2026-08-17n，使用者指定）。
+   原本畫的是**用中午 12:00 算出來的干支**——那是引擎為了估起運而暫用的值，
+   畫在盤上就變成一個看起來像真的、其實是憑空來的時柱。
+   （身宮／命宮在 2026-08-06 就已經因為同一個理由留白，時柱本身反而漏了。）
+
+   只改**顯示**：castFromDate 與曆法一行未動，起運仍照原本的暫用值估算，
+   出生列也仍寫著「時間不詳（時柱與起運僅供參考）」。
+
+   實作上不需要在渲染器裡開特例：它的十神、藏干、五行色全都是查表，
+   查不到「*」就各自回空字串／空陣列，所以時柱那一欄會自動變成
+   「兩個 * ＋ 十神留白 ＋ 藏干留白」，正好是我們要的語義。
+   ——這是渲染器「只畫不算」那條設計原則第一次真的付到現金。
+
+   例外與 buildAuxPillars 同一條：有 c.study 就代表時柱是書上明給的，不遮。 */
+function timeUnknown(c){return !!(c&&c.noTime&&!c.study);}
+function displayPillars(c){
+  return {年:c.p.year,月:c.p.month,日:c.p.day,時:timeUnknown(c)?'**':c.p.time};
+}
 function buildAuxPillars(c){
   var p=c&&c.p;
   if(!p)return {tai:null,shen:null,ming:null};
@@ -2221,7 +2280,7 @@ function renderChart(c){
   // 選中的輔柱（胎元／身宮／命宮）。渲染器把它排在原局右側、時運左側。
   var aux=buildAuxPillars(c),auxiliaries=[];
   if(selAux&&aux[selAux])auxiliaries.push({label:AUX_META[selAux].full,gz:aux[selAux]});
-  var opts={pillars:{年:c.p.year,月:c.p.month,日:c.p.day,時:c.p.time},
+  var opts={pillars:displayPillars(c),
             auxiliaries:auxiliaries,transits:transits,reverse:revOrder,age:age,
             footer:{natal:auxBarHTML(c)}};
   var box=el('chart'),cn=ZipingChart.colCount(opts);
@@ -2322,7 +2381,7 @@ function renderBorn(c,dy){
   }
   el('born').innerHTML=s;
   el('chartTitle').textContent=gender==='乾'?'乾造':gender==='坤'?'坤造':'命盤';
-  var bz=[c.p.year,c.p.month,c.p.day,c.p.time];
+  var d=displayPillars(c),bz=[d.年,d.月,d.日,d.時];
   if(revOrder)bz.reverse();
   el('chartSub').innerHTML='<span class="bz">'+bz.join(' ')+'</span>';
 }
