@@ -32,7 +32,7 @@
 /* 子平書房離線萬年曆引擎（盲點掃描外傳：離線排盤計畫，2026-07-16）。
    零依賴；資料只需 lib/solar_terms.js（1900–2130 十二節，UTC+8 牆鐘，秒級）。
    原理：日柱＝JDN mod 60 純算術；年柱以立春為界、月柱以十二節為界（查表）；時柱五鼠遁。
-   口徑權威來源：docs/CALENDAR_SPEC.md（註解與文件不符時以文件為準，並視為 bug）。引擎版本 v2.0。
+   口徑權威來源：docs/CALENDAR_SPEC.md（註解與文件不符時以文件為準，並視為 bug）。引擎版本 v2.1。
    子時兩派皆支援，差別只在日柱；預設 sameDay（與 lunar-javascript 一致，golden 釘死）：
      23:00–23:59 晚子：日柱＝當日（'nextDay' 則＝翌日），時柱兩派都以「翌日日干」起遁；
      00:00–00:59 早子：日柱＝當日，以當日日干起遁。
@@ -102,10 +102,25 @@
      研究工具那邊沒有 <input type=date> 幫忙。 */
   function assertRealDate(y, m, d, loY, hiY) {
     loY = loY || 1900; hiY = hiY || 2100;
-    if (!(y >= loY && y <= hiY)) throw new Error('年份超出範圍（' + loY + '–' + hiY + '）：' + y);
-    if (!(m >= 1 && m <= 12)) throw new Error('月份不合法：' + m);
+    if (!Number.isInteger(y) || !Number.isInteger(m) || !Number.isInteger(d))
+      throw new TypeError('年月日必須是整數：' + [y, m, d].join('-'));
+    if (!(y >= loY && y <= hiY)) throw new RangeError('年份超出範圍（' + loY + '–' + hiY + '）：' + y);
+    if (!(m >= 1 && m <= 12)) throw new RangeError('月份不合法：' + m);
     var dm = new Date(Date.UTC(y, m, 0)).getUTCDate();
-    if (!(d >= 1 && d <= dm)) throw new Error('日期不存在：' + y + '-' + m + '-' + d + '（該月只有 ' + dm + ' 天）');
+    if (!(d >= 1 && d <= dm)) throw new RangeError('日期不存在：' + y + '-' + m + '-' + d + '（該月只有 ' + dm + ' 天）');
+  }
+  function assertTime(h, mi, s) {
+    if (!Number.isInteger(h) || h < 0 || h > 23) throw new TypeError('小時不合法（須為 0–23 的整數）：' + h);
+    if (!Number.isInteger(mi) || mi < 0 || mi > 59) throw new TypeError('分鐘不合法（須為 0–59 的整數）：' + mi);
+    if (!Number.isInteger(s) || s < 0 || s > 59) throw new TypeError('秒不合法（須為 0–59 的整數）：' + s);
+  }
+  function assertLateZi(opts) {
+    if (opts && opts.lateZi != null && opts.lateZi !== 'sameDay' && opts.lateZi !== 'nextDay')
+      throw new TypeError("lateZi 只接受 'sameDay' 或 'nextDay'：" + opts.lateZi);
+  }
+  function assertWall(y, m, d, h, mi, s, loY, hiY) {
+    assertRealDate(y, m, d, loY, hiY);
+    assertTime(h, mi, s);
   }
 
   /* 只要日柱時用這支，不要用 pillars。日柱是 JDN 純算術，跟節氣表無關，
@@ -126,8 +141,9 @@
      年柱／月柱兩派都不動：它們由節氣的絕對時刻裁定，而 23:30 這個「時刻」
      不會因為日柱怎麼算就跑到別的節氣區間去。（2026-08-01） */
   function pillars(y, m, d, h, mi, s, opts) {
-    mi = mi || 0; s = s || 0;
-    assertRealDate(y, m, d);
+    mi = mi == null ? 0 : mi; s = s == null ? 0 : s;
+    assertWall(y, m, d, h, mi, s, 1900, 2100);
+    assertLateZi(opts);
     var lateZiNext = !!(opts && opts.lateZi === 'nextDay');
     var k = stamp(y, m, d, h, mi, s);
     var pi = prevIdx(k);
@@ -151,9 +167,25 @@
     return { year: gz(yIdx), month: GAN[mStem] + ZHI[mBranch], day: gz(dIdx), time: GAN[hStem] + ZHI[hBranch] };
   }
 
-  function nextJie(y, m, d, h, mi, s) { return rowInfo(prevIdx(stamp(y, m, d, h, mi || 0, s || 0)) + 1); }
-  function prevJie(y, m, d, h, mi, s) { return rowInfo(prevIdx(stamp(y, m, d, h, mi || 0, s || 0))); }
-  function minutesBetween(a, b) { return Math.abs(epochMin(a) - epochMin(b)); } // a,b: {y,m,d,h,mi,s}
+  function nextJie(y, m, d, h, mi, s) {
+    mi = mi == null ? 0 : mi; s = s == null ? 0 : s;
+    assertWall(y, m, d, h, mi, s, 1900, 2130);
+    return rowInfo(prevIdx(stamp(y, m, d, h, mi, s)) + 1);
+  }
+  function prevJie(y, m, d, h, mi, s) {
+    mi = mi == null ? 0 : mi; s = s == null ? 0 : s;
+    assertWall(y, m, d, h, mi, s, 1900, 2130);
+    return rowInfo(prevIdx(stamp(y, m, d, h, mi, s)));
+  }
+  function minutesBetween(a, b) {
+    if (!a || !b) throw new TypeError('minutesBetween 需要兩個時間物件');
+    var ah = a.h == null ? 0 : a.h, ami = a.mi == null ? 0 : a.mi, as = a.s == null ? 0 : a.s;
+    var bh = b.h == null ? 0 : b.h, bmi = b.mi == null ? 0 : b.mi, bs = b.s == null ? 0 : b.s;
+    assertWall(a.y, a.m, a.d, ah, ami, as, 1800, 2300);
+    assertWall(b.y, b.m, b.d, bh, bmi, bs, 1800, 2300);
+    return Math.abs(epochMin({ y: a.y, m: a.m, d: a.d, h: ah, mi: ami, s: as })
+      - epochMin({ y: b.y, m: b.m, d: b.d, h: bh, mi: bmi, s: bs }));
+  } // a,b: {y,m,d,h,mi,s}
 
   /* V1 時區包裝層（加法不改舊 API；規格：docs/名人檢驗管線實作規格 §V1）。
      日柱／時柱＝出生地當地牆鐘（現有 pillars 日時柱計算與時區無關，內部復用）；
@@ -161,12 +193,16 @@
      此 API 保留 V1 的民用牆鐘語義；名人命例的自然時間裁定另由
      tools/validation_natural_charts.mjs 組合「絕對年月＋真太陽日時」，共用曆法層不設全域開關。 */
   function _toUtc8(y, m, d, h, mi, s, offsetMinutes) {
-    var offMin = (typeof offsetMinutes === 'number') ? offsetMinutes : 480;
-    var D = new Date(Date.UTC(y, m - 1, d, h, mi || 0, s || 0) + (480 - offMin) * 60000);
+    mi = mi == null ? 0 : mi; s = s == null ? 0 : s;
+    assertWall(y, m, d, h, mi, s, 1900, 2100);
+    var offMin = offsetMinutes == null ? 480 : offsetMinutes;
+    if (!Number.isFinite(offMin) || offMin < -1440 || offMin > 1440)
+      throw new TypeError('UTC offset 分鐘不合法：' + offsetMinutes);
+    var D = new Date(Date.UTC(y, m - 1, d, h, mi, s) + (480 - offMin) * 60000);
     return { y: D.getUTCFullYear(), m: D.getUTCMonth() + 1, d: D.getUTCDate(), h: D.getUTCHours(), mi: D.getUTCMinutes(), s: D.getUTCSeconds() };
   }
   function pillarsLocal(y, m, d, h, mi, s, offsetMinutes, opts) {
-    var local = pillars(y, m, d, h, mi || 0, s || 0, opts);   // 日時柱：當地牆鐘
+    var local = pillars(y, m, d, h, mi == null ? 0 : mi, s == null ? 0 : s, opts);   // 日時柱：當地牆鐘
     var u = _toUtc8(y, m, d, h, mi, s, offsetMinutes);        // 年月柱：換算 UTC+8 牆鐘查節氣
     var ym = pillars(u.y, u.m, u.d, u.h, u.mi, u.s, opts);
     return { year: ym.year, month: ym.month, day: local.day, time: local.time };
@@ -174,49 +210,88 @@
   function nextJieLocal(y, m, d, h, mi, s, offsetMinutes) { var u = _toUtc8(y, m, d, h, mi, s, offsetMinutes); var r = nextJie(u.y, u.m, u.d, u.h, u.mi, u.s); if (r) r.zone = 'UTC+8'; return r; }
   function prevJieLocal(y, m, d, h, mi, s, offsetMinutes) { var u = _toUtc8(y, m, d, h, mi, s, offsetMinutes); var r = prevJie(u.y, u.m, u.d, u.h, u.mi, u.s); if (r) r.zone = 'UTC+8'; return r; }
 
-  /* 反查：回傳 [{y,m,d,h}]，h 為該時段代表小時（與 v5 hourBlock 對齊：早子 0、晚子 23、其餘取奇數起始時）。
-     語義與 v5 既有反查一致：四柱在「整點 h:00:00」時刻成立即收。 */
+  function dateByJdn(j) { // Fliegel–Van Flandern：JDN → 公曆
+    var a = j + 32044, b = Math.floor((4 * a + 3) / 146097), c = a - Math.floor(146097 * b / 4);
+    var dd = Math.floor((4 * c + 3) / 1461), e = c - Math.floor(1461 * dd / 4), mm = Math.floor((5 * e + 2) / 153);
+    return { d: e - Math.floor((153 * mm + 2) / 5) + 1, m: mm + 3 - 12 * Math.floor(mm / 10),
+      y: 100 * b + dd - 4800 + Math.floor(mm / 10) };
+  }
+  function wallAt(ms) {
+    var d = new Date(ms);
+    return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate(),
+      h: d.getUTCHours(), mi: d.getUTCMinutes(), s: d.getUTCSeconds() };
+  }
+  function samePillars(a, b) {
+    return a.year === b.year && a.month === b.month && a.day === b.day && a.time === b.time;
+  }
+
+  /* 反查 v2.1：回傳四柱真正成立的連續半開區間，而不是拿一個整點冒充整個時辰。
+     每項保留頂層 y/m/d/h/mi/s（＝start）給舊呼叫端逐步遷移；新呼叫端應讀：
+       { start, endExclusive, blockStartHour, precision:'interval' }
+     節氣若落在時辰中間，窗口會精確切在交接秒。晚子算次日時，同一四柱可同時有
+     前一民用日 23:00–24:00 與次日 00:00–01:00 兩個窗口，兩者都必須保留。 */
   function reverse(p, startYear, endYear, opts) {
-    var dTarget = jiaziIndex(p.day);
-    if (dTarget < 0) return [];
-    var hb = ZHI.indexOf(p.time && p.time[1]);
-    if (hb < 0) return [];
-    var hours = hb === 0 ? [0, 23] : [2 * hb - 1, 2 * hb];
+    assertLateZi(opts);
+    if (!Number.isInteger(startYear) || !Number.isInteger(endYear)
+        || startYear < 1900 || endYear > 2100 || startYear > endYear)
+      throw new RangeError('反查年份須為 1900–2100 的有效區間');
+    if (!p || ['year', 'month', 'day', 'time'].some(function (k) { return jiaziIndex(p[k]) < 0; })) return [];
+    var dTarget = jiaziIndex(p.day), hb = ZHI.indexOf(p.time[1]);
     var out = [];
-    var j0 = jdn(startYear, 1, 1);
-    var j = j0 + ((dTarget - dayIndexByJdn(j0)) % 60 + 60) % 60;
-    var jEnd = jdn(endYear, 12, 31);
-    for (; j <= jEnd; j += 60) {
-      // JDN → 公曆（Fliegel–Van Flandern）
-      var a = j + 32044, b = Math.floor((4 * a + 3) / 146097), c = a - Math.floor(146097 * b / 4);
-      var dd = Math.floor((4 * c + 3) / 1461), e = c - Math.floor(1461 * dd / 4), mm = Math.floor((5 * e + 2) / 153);
-      var day = e - Math.floor((153 * mm + 2) / 5) + 1, mon = mm + 3 - 12 * Math.floor(mm / 10), yr = 100 * b + dd - 4800 + Math.floor(mm / 10);
-      if (yr < startYear || yr > endYear) continue;
-      for (var t = 0; t < hours.length; t++) {
-        var pp = pillars(yr, mon, day, hours[t], 0, 0, opts);
-        if (pp.year === p.year && pp.month === p.month && pp.day === p.day && pp.time === p.time) {
-          out.push({ y: yr, m: mon, d: day, h: hours[t] === 0 ? 0 : (hours[t] % 2 === 0 ? hours[t] - 1 : hours[t]) });
-          break; // 同一時段收一次（兩個候選小時屬同 block 才會重複；早/晚子屬不同 block，不 break 會漏 → 見下
-        }
+    var firstCivil = jdn(startYear, 1, 1), lastCivil = jdn(endYear, 12, 31);
+
+    function addWindow(civilJ, startHour, endHour, blockStartHour) {
+      var q = dateByJdn(civilJ);
+      var startMs = Date.UTC(q.y, q.m - 1, q.d, startHour, 0, 0);
+      var endMs = Date.UTC(q.y, q.m - 1, q.d, endHour, 0, 0);
+      var cuts = [startMs], i = prevIdx(stamp(q.y, q.m, q.d, startHour, 0, 0)) + 1;
+      while (i < ROWS.length) {
+        var ji = rowInfo(i), at = Date.UTC(ji.y, ji.m - 1, ji.d, ji.h, ji.mi, ji.s);
+        if (at >= endMs) break;
+        if (at > startMs) cuts.push(at);
+        i++;
       }
-      // 早晚子時是兩個不同 block：若 hb===0 且兩個小時都匹配，各收一筆
-      if (hb === 0 && out.length && out[out.length - 1].y === yr && out[out.length - 1].m === mon && out[out.length - 1].d === day && out[out.length - 1].h === 0) {
-        var p23 = pillars(yr, mon, day, 23, 0, 0, opts);
-        if (p23.year === p.year && p23.month === p.month && p23.day === p.day && p23.time === p.time)
-          out.push({ y: yr, m: mon, d: day, h: 23 });
+      cuts.push(endMs);
+      for (var n = 0; n + 1 < cuts.length; n++) {
+        var a = wallAt(cuts[n]), pp;
+        try { pp = pillars(a.y, a.m, a.d, a.h, a.mi, a.s, opts); }
+        catch (err) { continue; } // 只會遇到 1900 立春前的宣告範圍外片段
+        if (!samePillars(pp, p)) continue;
+        var z = wallAt(cuts[n + 1]);
+        out.push({ y: a.y, m: a.m, d: a.d, h: a.h, mi: a.mi, s: a.s,
+          start: a, endExclusive: z, blockStartHour: blockStartHour, precision: 'interval' });
       }
+    }
+
+    /* civilDelta：有效日柱 JDN → 民用日期 JDN 的位移。
+       晚子算次日的有效日柱是翌日，所以民用日期要退一天；其餘皆為 0。 */
+    function scanBlock(startHour, endHour, blockStartHour, civilDelta) {
+      var effective0 = firstCivil - civilDelta;
+      var effectiveJ = effective0 + ((dTarget - dayIndexByJdn(effective0)) % 60 + 60) % 60;
+      for (; effectiveJ + civilDelta <= lastCivil; effectiveJ += 60) {
+        var civilJ = effectiveJ + civilDelta;
+        if (civilJ < firstCivil) continue;
+        addWindow(civilJ, startHour, endHour, blockStartHour);
+      }
+    }
+    if (hb === 0) {
+      scanBlock(0, 1, 0, 0);
+      scanBlock(23, 24, 23, opts && opts.lateZi === 'nextDay' ? -1 : 0);
+    } else {
+      var h0 = 2 * hb - 1;
+      scanBlock(h0, h0 + 2, h0, 0);
     }
     return out;
   }
 
-  var API = { version: '2.0', GAN: GAN, dayGZ: dayGZ, ZHI: ZHI, gz: gz, jiaziIndex: jiaziIndex, jdn: jdn, pillars: pillars, pillarsLocal: pillarsLocal, nextJie: nextJie, prevJie: prevJie, nextJieLocal: nextJieLocal, prevJieLocal: prevJieLocal, minutesBetween: minutesBetween, reverse: reverse, range: [1900, 2100] };
+  var API = { version: '2.1', GAN: GAN, dayGZ: dayGZ, ZHI: ZHI, gz: gz, jiaziIndex: jiaziIndex, jdn: jdn, pillars: pillars, pillarsLocal: pillarsLocal, nextJie: nextJie, prevJie: prevJie, nextJieLocal: nextJieLocal, prevJieLocal: prevJieLocal, minutesBetween: minutesBetween, reverse: reverse, range: [1900, 2100] };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   g.ZipingCal = API;
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
 <script id="paipan-dayun">
-/* 【狀態：V2.0 已接入排盤器】
+/* 【狀態：V2.1 已接入排盤器】
    大運區間、流年分組、跨運標記與「今」的判定必須整套使用本層，
    不可只抽其中一項回舊年份模型。完整口徑見 docs/CALENDAR_SPEC.md。 */
 /* 大運 V2：以**實際交運時刻**建模，而不是「出生年＋四捨五入起運歲」。
@@ -229,8 +304,7 @@
    年份範圍不含今年的大運上，比原本更難解釋。所以要改就整套一起改。
 
    本檔由八字排盤器直接載入。兩項範圍要求也連帶影響基礎曆法檔：
-     lib/solar_terms.js  上界 2101 → 2130（大運跨九十年，今日新生兒第九步走到約 2126）。
-                         既有 1900–2101 的 2424 筆逐 byte 未變，V1 結果零影響。
+     lib/solar_terms.js  上界已延伸至 2130（大運跨九十年，今日新生兒第九步走到約 2126）。
      lib/calendar.js     dayGZ 的年份上界 2200 → 2300，配合上面的延伸。
 
    零依賴，只吃 lib/calendar.js 的 API（瀏覽器與 Node 皆可）。 */
@@ -306,10 +380,13 @@
      每一步大運用**半開區間** [startAt, nextStartAt)：交運時刻一到就屬新運，
      不會有某一刻同時屬於兩步，也不會有縫。 */
   function build(birth, gender, opts) {
-    var p = Cal.pillars(birth.y, birth.m, birth.d, birth.h, birth.mi || 0, 0, opts);
+    if (gender !== '乾' && gender !== '坤')
+      throw new TypeError("性別欄只接受 '乾' 或 '坤'；缺資料時請保留未知，不得默認成坤造");
+    var birthMi = birth.mi == null ? 0 : birth.mi;
+    var p = Cal.pillars(birth.y, birth.m, birth.d, birth.h, birthMi, 0, opts);
     var yangYear = GAN.indexOf(p.year[0]) % 2 === 0;      // 甲丙戊庚壬為陽
     var fwd = (gender === '乾') === yangYear;             // 陽年男、陰年女順行
-    var qi = qiYun(birth, fwd);
+    var qi = qiYun({ y: birth.y, m: birth.m, d: birth.d, h: birth.h, mi: birthMi }, fwd);
     if (!qi) return { dir: fwd, qi: null, steps: [] };
 
     /* 第一步交運日＝出生日期 ＋ 起運的 年／月／日（順序固定，見 addYMD）。
@@ -412,7 +489,7 @@
     return -1;
   }
 
-  var API = { version: '2.0', build: build, addYears: addYears, addMonths: addMonths, addDays: addDays, yearInfo: yearInfo, yearsOfStep: yearsOfStep,
+  var API = { version: '2.1', build: build, addYears: addYears, addMonths: addMonths, addDays: addDays, yearInfo: yearInfo, yearsOfStep: yearsOfStep,
               stepAt: stepAt, lichunAt: lichunAt, baseYear: baseYear, addYMD: addYMD, wall: wall, fromWall: fromWall,
               yearGZ: yearGZ };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
@@ -981,6 +1058,11 @@ label.f>span small{
 .range-row{margin-bottom:2px}
 .range-row label.f{margin-bottom:6px}
 .range-row input{font-size:15px}
+/* 起年靠左、迄年靠右：兩個數字落在範圍的兩端，中間那段留白本身就在說
+   「從這裡到那裡」。去框之後這一點特別有用——沒有框可以界定範圍了，
+   只剩兩條底線與它們之間的距離。 */
+#inFrom{text-align:left}
+#inTo{text-align:right}
 
 /* 晚子時面板：特殊規則，不是錯誤。用淡朱底＋左側朱線，
    不用警告紅、不用驚嘆號——它要傳達的是「這裡有兩派做法」，不是「你做錯了」。 */
@@ -1861,6 +1943,22 @@ function fmtYmd(o){
   var y=o.year!=null?o.year:o.y,m=o.month!=null?o.month:o.m,d=o.day!=null?o.day:o.d;
   return y+'.'+pad2(m)+'.'+pad2(d);
 }
+function fmtHms(o){return pad2(o.h)+':'+pad2(o.mi||0)+':'+pad2(o.s||0);}
+function wallObj(ms){
+  var d=new Date(ms);
+  return{y:d.getUTCFullYear(),m:d.getUTCMonth()+1,d:d.getUTCDate(),h:d.getUTCHours(),mi:d.getUTCMinutes(),s:d.getUTCSeconds()};
+}
+/* 反查窗口是半開區間 [start,endExclusive)，人看的文字則把終點減一秒，
+   例如 [11:00,13:00) 顯示成 11:00:00–12:59:59。這不是提高出生時間精度，
+   只是忠實說明「哪些民用時間會得到同一組四柱」。 */
+function reverseIntervalText(x){
+  var a=x.start||x,z=wallObj(Date.UTC(x.endExclusive.y,x.endExclusive.m-1,x.endExclusive.d,
+    x.endExclusive.h,x.endExclusive.mi||0,x.endExclusive.s||0)-1000);
+  return fmtYmd(a)+' '+fmtHms(a)+(a.y===z.y&&a.m===z.m&&a.d===z.d?'–'+fmtHms(z):'–'+fmtYmd(z)+' '+fmtHms(z));
+}
+function reverseDataNote(x){
+  return '有效時間：'+reverseIntervalText(x)+'；四柱只能定位到此區間，未據此推算精確起運。若知道確切時間，請改用生日模式。';
+}
 function jiaziIndex(gz){
   var a=GAN.indexOf(gz[0]),b=ZHI.indexOf(gz[1]);
   if(a<0||b<0||(a%2)!==(b%2))return -1;
@@ -2118,15 +2216,18 @@ function syncOrderBtn(){
   b.setAttribute('aria-pressed',revOrder);
   b.title='目前四柱排列：'+cur+'；按下切換為'+nxt;
 }
+/* 兩個監聽都必須在頁面載入時建立。曾誤放進排列鈕的 click callback，結果使用者
+   第一次打開頁面時「不知道確切時間？」完全沒反應，干支也不會隨選值改色；
+   只有先按一次排列鈕才會偶然恢復。（2026-08-18） */
+el('gzInputs').addEventListener('change',syncGzColors);
+el('btnTmMore').addEventListener('click',revealTimeMode);
 el('btnOrder').addEventListener('click',function(){
   revOrder=!revOrder;
   try{localStorage.setItem(ORDER_KEY,revOrder?'rev':'std');}catch(e){}
   /* 改了干支就重新上色。用 change 而不是每次讀值時才算——
    顏色是顯示狀態，該由「值變了」這件事驅動，不該掛在讀值的路徑上
    （讀值只在按排盤時發生，那時已經太晚了）。 */
-el('gzInputs').addEventListener('change',syncGzColors);
-el('btnTmMore').addEventListener('click',revealTimeMode);
-syncOrderBtn();renderGzInputs();
+  syncOrderBtn();renderGzInputs();
   if(chart)redrawAll();
 });
 syncOrderBtn();
@@ -2732,6 +2833,12 @@ function castFromPillars(p,meta){
   focusToday();redrawAll();showScreen('scChart',meta.screenOpts);
   return true;
 }
+function castReverseCandidate(x,p){
+  return castFromPillars(p,{
+    source:'四柱反查候選（不是出生時間證明）',
+    dataNote:reverseDataNote(x)
+  });
+}
 /* 讀干支下拉，回傳四柱陣列；不合法就顯示錯誤並回 null（呼叫端據此中止）。
    反查與只排四柱兩個模式共用——同一份讀值與檢查若各寫一遍，
    之後改了一邊忘了另一邊，兩個模式對同一組輸入會有不同判定。 */
@@ -2781,15 +2888,16 @@ el('btnGo').addEventListener('click',function(){
       var gz=readGzInputs();if(!gz)return;
       var from=+el('inFrom').value,to=+el('inTo').value;
       if(!(from>=1901&&to<=2100&&from<=to)){showErr('年份範圍請填在 1901 到 2100 之間，且起年不大於迄年。');return;}
-      var list=Cal.reverse({year:gz[0],month:gz[1],day:gz[2],time:gz[3]},from,to,ziOpts())||[];
+      var target={year:gz[0],month:gz[1],day:gz[2],time:gz[3]};
+      var list=Cal.reverse(target,from,to,ziOpts())||[];
       if(!list.length){showErr('在 '+from+'–'+to+' 年之間找不到這組八字。請確認四柱抄對了，或把年份範圍放寬。');return;}
-      if(list.length===1){castFromDate(list[0].y,list[0].m,list[0].d,list[0].h,0,false);return;}
-      el('cands').innerHTML='<p class="hint" style="margin:0 0 4px">找到 '+list.length+' 個結果，請點正確的一個：</p>'
-        +list.map(function(x,k){return '<button type="button" data-c="'+k+'">'+x.y+' 年 '+x.m+' 月 '+x.d+' 日　'
-          +pad2(x.h)+':00（'+ZHI[branchIndexOfHour(x.h)]+'時）</button>';}).join('');
+      if(list.length===1){castReverseCandidate(list[0],target);return;}
+      el('cands').innerHTML='<p class="hint" style="margin:0 0 4px">找到 '+list.length+' 個有效時間區間。四柱不能判定區間內的確切分鐘，請按已知資料選擇：</p>'
+        +list.map(function(x,k){return '<button type="button" data-c="'+k+'">'+esc(reverseIntervalText(x))
+          +'（'+ZHI[branchIndexOfHour(x.blockStartHour)]+'時）</button>';}).join('');
       el('cands').onclick=function(e){
         var b=e.target.closest('[data-c]');if(!b)return;
-        var x=list[+b.dataset.c];castFromDate(x.y,x.m,x.d,x.h,0,false);
+        var x=list[+b.dataset.c];castReverseCandidate(x,target);
       };
     }
   }catch(err){showErr('排盤時發生問題：'+(err&&err.message?err.message:err));}
