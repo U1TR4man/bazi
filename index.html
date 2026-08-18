@@ -652,6 +652,22 @@
   --pad:12px;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* ── hidden 必須真的藏得住（2026-08-17m）──────────────────────────────
+   瀏覽器預設的 `[hidden]{display:none}` 是 **UA 樣式**，任何作者樣式都贏它。
+   所以只要元素身上有 `label.f{display:block}`、`.chips{display:grid}`
+   這類規則，`el.hidden=true` 就完全沒有效果——屬性設了、DOM 也對，畫面照樣顯示。
+
+   實測（Chrome，2026-08-17）共八個元素中招，其中兩個是使用者看得到的 bug：
+     paneExactTime／paneBranchTime → 「精確時間」模式下**出生時間與出生時辰同時出現**，
+       2026-08-17b 那一輪整輪的重點「時間精度三態互斥」等於從來沒生效過；
+     ygrid → 靠 `innerHTML=''` 清空才看不出來，屬於被掩蓋的同一個 bug。
+
+   為什麼測試沒抓到：`test_paipan` 的 DOM shim 只記錄 `.hidden` 這個**屬性**，
+   沒有 CSS 引擎，所以 `assert(pane.hidden===true)` 一直是綠的。
+   斷言驗的是「我們有沒有下令隱藏」，不是「它有沒有真的被藏起來」。
+
+   一條 !important 解決全部，並且以後新增任何 display 規則都不會再踩到。 */
+[hidden]{display:none !important}
 /* 鍵盤焦點：不用黑框。
    （2026-08-05 改。原本是 2px 的 --ink（#2a231a，近黑），在米紙底色上是整頁最重的一塊，
     按一下「直排」就跳出一個黑方框，比它標示的那顆按鈕還搶眼。
@@ -962,7 +978,11 @@ label.f>span small{
 #ziPane .seg{margin:0 0 2px}
 
 /* 未知時間說明改用同一套材質，維持「狀態不是錯誤」的語言 */
-.note-box{background:var(--zhu-wash-2);border-left-color:var(--zhu-line)}
+/* 補充說明的色塊統一為 --band-yr（2026-08-17m）——與命盤頁的選取、
+   輸入頁的 segmented 選取同一個色票。原本是淡朱 --zhu-wash-2，
+   在一個已經「減紅」的頁面上，只有這兩塊說明是粉的，讀起來像在示警。
+   （形狀與情境本來就分得開：說明是整段落＋左側朱邊，選取是可點的一格。） */
+.note-box{background:var(--band-yr);border-left-color:var(--zhu-line)}
 
 /* （2026-08-17c 曾在這裡再寫一組「header 三級」的覆寫——.back 給紙面底色與外框、
    .ord 給 hover 底色。08-17g 兩顆統一之後那組已作廢，整段刪除。
