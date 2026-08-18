@@ -793,8 +793,14 @@ input:focus,select:focus{
   transition:background-color .14s ease,color .14s ease,box-shadow .14s ease;
 }
 .seg button:last-child{border-right:0}
+/* 選取的色塊＝ --band-yr，與命盤頁大運／流年／矩陣的選取**同一個 token**
+   （2026-08-17k）。08-17f 已把命盤頁三處統一到 --band-yr，
+   輸入頁的 segmented 卻還留著淡朱 --zhu-wash-2——
+   同一個「選取」在輸入頁是粉、在命盤頁是米，跨頁一看就不是同一件事。
+   字色與底部朱線保留：色塊只負責「這一格被選了」，
+   朱色留給「選的是哪一個」——兩層訊息，兩個載體。 */
 .seg button.on{
-  background:var(--zhu-wash-2);color:var(--zhu-deep);font-weight:500;
+  background:var(--band-yr);color:var(--zhu-deep);font-weight:500;
   box-shadow:inset 0 -2px 0 var(--zhu);
 }
 /* hover 只在真有指標裝置時生效，手機不會出現「點完卡在 hover」 */
