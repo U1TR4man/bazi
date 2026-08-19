@@ -1753,6 +1753,9 @@ html.embedded #scInput>.wrap>.top{display:none}
   margin:12px -14px -14px;padding:12px 14px 13px;border-top:1px solid var(--line-soft);
   background:linear-gradient(90deg,rgba(139,108,55,.035),rgba(139,108,55,.012));
 }
+.lunarwrap{display:flex;align-items:flex-start;gap:8px}
+.lunarwrap>#lunarCompareBody{flex:1 1 auto;min-width:0}
+.lunarwrap>#lunarCompareBody[hidden]{display:none}
 .lunar-compare-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:9px}
 .lunar-compare-head b{font-family:var(--serif);font-size:13px;font-weight:500;letter-spacing:.08em;color:var(--zhu-deep)}
 .lunar-compare-head span{font-size:10.5px;color:var(--ink-faint)}
@@ -2457,6 +2460,22 @@ footer .ft-more>div:last-child{opacity:.8}
   line-height:1;color:var(--zhu-deep);
 }
 .crossmark.soon{color:var(--zhu-line)}
+/* 六候標記（V0.4b）。與「今」「交」同一套語彙：干支旁的一個小字。
+   位置取**右下角**——三個角各有分工，不會撞在一起也不用記：
+     右上「今」＝現在在哪裡（時點）
+     左上「交」＝大運邊界在哪裡（事件）
+     右下 六候  ＝這一格在月朔運裡處於哪個階段（狀態）
+   用 --mk 而不是自己訂字級，跟另外兩個標記同一個尺度來源；
+   顏色用 --ink-faint 不用朱：朱在這個工具裡是「命理閱讀的標記層」，
+   而六候是研究層，不該和今／交搶同一個視覺權重。 */
+.chip.ph{position:relative}
+.phmark{
+  position:absolute;bottom:1px;right:2px;font-family:var(--serif);
+  font-size:var(--mk);line-height:1;color:var(--ink-faint);
+}
+/* 貼近古典節點時轉深一階——那是「正在節點上」，不是「在兩個節點之間」。
+   同樣只有濃淡差，形狀不變：它們是同一件事的兩個狀態。 */
+.phmark.node{color:var(--ink-soft)}
 .chip[disabled]{cursor:default}
 
 /* 交運帶：只在選中的流年中途換運時出現。
@@ -2899,8 +2918,20 @@ footer{text-align:center;font-size:11.5px;color:var(--ink-soft);padding:16px 6px
       </button>
       <div class="born" id="born"></div>
     </div>
+    <!-- 月朔研究整塊可收放。沿用出生資料那顆圈點鈕的語彙，不另造一個現代箭頭。
+         **預設收起**：六候現在已經標在流年／流月／流日的干支旁，
+         這一塊是「想看細節時才展開」的補充，不是常駐讀物。 -->
     <div class="lunar-compare" id="lunarCompare" hidden>
-      <div id="lunarCompareBody" aria-live="polite"></div>
+      <div class="lunarwrap">
+        <button type="button" class="bornfold" id="lunarFold"
+                aria-expanded="false" aria-controls="lunarCompareBody" aria-label="展開月朔研究">
+          <svg viewBox="0 0 14 14" aria-hidden="true" focusable="false">
+            <circle class="ring" cx="7" cy="7" r="5.1"/>
+            <circle class="dot"  cx="7" cy="7" r="2.3"/>
+          </svg>
+        </button>
+        <div id="lunarCompareBody" aria-live="polite" hidden></div>
+      </div>
     </div>
   </div>
 
@@ -3376,6 +3407,13 @@ syncLuckModeBtn();
 /* 圈點收放。純顯示層：不碰 localStorage（那是本工具唯一寫入的東西，
    目前只存排法與矩陣偏好，不為了一個摺疊狀態再多寫一筆），
    也不碰任何排盤結果——收起來只是不顯示，資料仍在 DOM 裡，讀屏照樣讀得到順序。 */
+el('lunarFold').addEventListener('click',function(){
+  /* 與 bornFold 同一套：狀態的真相是「內容有沒有被隱藏」，不是 aria-expanded。 */
+  var open=!el('lunarCompareBody').hidden;
+  el('lunarCompareBody').hidden=open;
+  this.setAttribute('aria-expanded',String(!open));
+  this.setAttribute('aria-label',open?'展開月朔研究':'收合月朔研究');
+});
 el('bornFold').addEventListener('click',function(){
   /* 狀態的真相是「內容有沒有被隱藏」，不是 aria-expanded。
      第一版從 aria 反推，等於把無障礙屬性當成狀態儲存體：
@@ -3909,93 +3947,6 @@ function researchRemaining(ms){
   var mins=Math.floor(total/60),secs=total-mins*60;
   return (days?days+' 天 ':'')+(hours?hours+' 時 ':'')+(mins?mins+' 分 ':'')+secs+' 秒';
 }
-/* 所選流月的節氣起訖，半開。這裡刻意**不**呼叫 selectedTimeRange()——
-   那一個在選了流日時會回傳當日範圍，而分段視圖問的是「這個月跨過哪些候」，
-   不是「這一天在哪一候」。兩者混用會讓同一個畫面在點日期時偷偷換掉語義。
-   沒選到流月就回 null，由呼叫端顯示提示，不猜一個範圍出來。 */
-function selectedMonthRange(){
-  if(selYear==null||selMonth==null)return null;
-  var ms=buildLiuYue(selYear),m=ms[selMonth];
-  if(!m)return null;
-  var a=wall(m),next=ms[selMonth+1];
-  if(!next){var nx=buildLiuYue(selYear+1);next=nx&&nx[0];}
-  if(!next)return null;
-  return {start:a,end:wall(next)};
-}
-/* 所選大運柱的六候（V0.3.4 UI）。
-
-   月朔運的研究粒度到這裡才齊：**某一刻在哪一候**（`cursorAt`，上方六候帶）、
-   **這個月跨過哪些候**（`segmentsBetween` ＋ 流月分段）、
-   **這一步運裡六候各自從何時開始**（本函式）。缺了最粗的這一層，
-   要看整步運的節奏就得一個月一個月點過去。
-
-   走 `segmentsBetween(step.startAt, step.endAt)` 而不是直接叫 `phaseWindows()`：
-   兩者的邊界同源，但前者已經被十四條測試釘過，而且與流月分段共用同一條路徑——
-   同一個畫面上的兩塊資料若各走各的，哪天不一致會很難查。
-
-   只寫每一候的**起**時刻，不寫訖：整柱六段嚴格相接且鋪滿整步，
-   每一段的訖就是下一段的起，寫出來是同一個數字印兩次。
-   整步的訖在末行講一次就夠。（流月分段那邊兩端都寫，是因為那個範圍
-   由所選流月裁出來，兩端都不是讀者已知的數字。） */
-function renderLunarStepPhases(){
-  if(luckMode!=='lunar')return '';
-  if(!(lunarDy&&lunarDy.model))return '';
-  var st=lunarDy.model.steps[selDayun];
-  if(!st)return '';
-  var res;
-  try{res=LunarDayun.segmentsBetween(lunarDy.model,st.startAt,st.endAt);}catch(e){return '';}
-  /* 引擎保證整柱恰好切成六段（test_lunar_dayun 有鎖）。
-     真的不是六段就什麼都不畫——寧可少一塊，也不要畫一塊我解釋不了的東西。 */
-  if(res.segments.length!==6)return '';
-  var rows=res.segments.map(function(s){
-    return '<li><i>'+esc(s.stage.label)+'</i><em>'+fmtResearchCursor(s.start)+' 起</em></li>';
-  }).join('');
-  /* data-span 讓兩塊在 DOM 上可分辨。兩者共用 .lunar-span 的樣式，
-     但語義不同（一步運 vs 一個流月）——沒有標記的話，
-     任何「找 .lunar-span」的程式或測試都只會抓到先出現的那一塊。 */
-  return '<div class="lunar-span" data-span="step">'
-    +'<div class="lunar-span-head"><b>所選大運 · 六候</b><span>'+esc(st.pillar)+'</span></div>'
-    +'<ol class="lunar-span-list">'+rows+'</ol>'
-    +'<p class="lunar-six-note">此運 '+fmtResearchCursor(st.startAt)
-    +' 至 '+fmtResearchCursor(st.endAt)+'。</p></div>';
-}
-/* 流月六候分段（V0.4 UI）。純顯示層：只把 Engine 的 segmentsBetween()
-   畫出來，不自己判斷候界，也不改主盤的大運／流年／流月／流日任何一個選取。
-
-   這是**範圍**視圖，與上方的單點研究游標刻意分開：它只吃所選流月的節氣起訖，
-   不吃自訂研究時刻。所以這裡也**不**標「游標目前在哪一段」——
-   那會把兩個視圖混成同一個狀態，正是前手交接時點名要避免的。 */
-function renderLunarSpan(){
-  /* 只在**按下月亮、切到月朔運之後**才出現（2026-08-19 使用者裁定）。
-
-     上方的六候帶、積朔三數、下一候倒數在節氣模式下也看得到，這一段刻意不跟它們一致：
-     那幾項講的是「這張命盤的月朔讀數」，屬於對照；而分段講的是
-     「這個月**在月朔運裡**跨過哪些候」，是月朔運自己的盤面內容。
-     主盤還顯示節氣運時把它擺出來，等於在節氣盤上寫月朔運的柱與候，會誤導。 */
-  if(luckMode!=='lunar')return '';
-  if(!(lunarDy&&lunarDy.model))return '';
-  var r=selectedMonthRange();
-  if(!r)return '<div class="lunar-span" data-span="month"><p class="lunar-six-note">未選流月，暫不分段。點流年下方的月份即可。</p></div>';
-  var res;
-  try{res=LunarDayun.segmentsBetween(lunarDy.model,r.start,r.end);}catch(e){return '';}
-  var segs=res.segments;
-  if(!segs.length)
-    return '<div class="lunar-span" data-span="month"><p class="lunar-six-note">所選流月不在研究時間範圍內。</p></div>';
-  /* 整月只在一候時就只有一段——不為了「看起來像分段」而切出第二段。
-     這一句只是把「共 1 段」講成人話，沒有多畫任何東西。 */
-  var count=segs.length===1?'整月同在 '+segs[0].stage.label:'共 '+segs.length+' 段';
-  var rows=segs.map(function(s){
-    var cyc=s.startsAtCycleBoundary;
-    return '<li'+(cyc?' class="cyc"':'')+'>'
-      +'<i>'+esc(s.stage.label)+'</i>'
-      +'<em>'+fmtResearchCursor(s.start)+' 至 '+fmtResearchCursor(s.endExclusive)+'</em>'
-      +(cyc?'<small>交入 '+esc(s.pillar)+' 運</small>':'')+'</li>';
-  }).join('');
-  return '<div class="lunar-span" data-span="month">'
-    +'<div class="lunar-span-head"><b>所選流月 · 六候分段</b><span>'+count+'</span></div>'
-    +'<ol class="lunar-span-list">'+rows+'</ol>'
-    +'<p class="lunar-six-note">分段時刻出自研究模型，不是天文月相。</p></div>';
-}
 /* 研究區自己的游標來源。比 selectedTimeRange() **多一級流年**。
 
    為什麼不直接改 selectedTimeRange()：那個函式是共用的，交運帶（#handover）
@@ -4048,8 +3999,9 @@ function renderLunarCompare(){
       +(near?'　·　'+esc(nn.moonBody)+'　·　'+esc(nn.label)
             :'　·　'+esc(nn.trigram)+' 前 '+compactResearchNumber(phase.distanceToNode)+' 朔運日')
       +'　·　本運位置 '+compactResearchNumber(phase.progress*100)+'%</p>'
+      /* 只寫下一個節點與它的日期，不寫「尚餘 X 天 X 時 X 分 X 秒」——
+         那個倒數每秒都在變，卻沒有一秒是可以拿來斷運的。 */
       +'<p class="lunar-six-note">下一節點：'+esc(phase.nextNode.trigram)+'　·　'+fmtResearchCursor(phase.nextPhaseAt)
-      +'　·　尚餘 '+researchRemaining(phase.remainingMs)
       +(phase.nextCycleStart&&phase.nextPillar?'（同時交入 '+esc(phase.nextPillar)+' 運）':'')
       +(phase.timelineEnd?'（九步研究時間軸終點）':'')+'</p>';
   }else{
@@ -4062,7 +4014,7 @@ function renderLunarCompare(){
     +'　·　目前顯示：'+(luckMode==='lunar'?'月朔':'節氣')+'</span></div>'
     +'<p class="lunar-compare-now">'+followed+' '+fmtResearchCursor(at)
     +'　·　節氣 '+solarP+'　／　月朔 '+lunarP+'　·　'+researchRelationLabel(cur.relation)+'</p>'
-    +strip+note+renderLunarStepPhases()+renderLunarSpan();
+    +strip+note;
 }
 function renderDayun(){
   /* 欄數必須跟著實際步數走。
@@ -4166,6 +4118,28 @@ el('btnGrid').addEventListener('click',function(){
   if(chart)redrawAll();else{el('ygrid').hidden=!yearGrid;el('stepYear').hidden=yearGrid;}
 });
 syncGridBtn();
+/* 六候標記：給某一個時點，回傳掛在干支右下角的那個小字。
+
+   只在月朔模式出現；時點落在九步時間軸外就回 null——不猜也不外推。
+
+   **一個角落只放得下一個字，所以視覺上顯示的是階段的「起點節點」**，
+   完整的「震→兌」放進 title 與讀屏文字。這不違反 V0.4「不得硬把整段
+   叫成單一卦」那條：那條講的是研究區那行**讀數**，
+   而這裡是一個 7px 的位置索引，作用等同「今」「交」——說你在哪，不下判斷。
+   真的貼到節點上（容差內）時轉深一階，形狀不變。 */
+function phaseMarkAt(at){
+  if(luckMode!=='lunar')return null;
+  if(!(lunarDy&&lunarDy.model))return null;
+  var p;
+  try{p=LunarDayun.cursorAt(lunarDy.model,at);}catch(e){return null;}
+  if(!p)return null;
+  var near=p.isNearClassicalNode,glyph=near?p.nearestNode.trigram:p.stage.fromTrigram;
+  return {
+    near:near, glyph:glyph, full:p.display,
+    html:'<span class="phmark'+(near?' node':'')+'" aria-hidden="true">'+esc(glyph)+'</span>'
+      +'<span class="sr-only">，月朔 '+esc(p.display)+'</span>'
+  };
+}
 function renderLiunian(){
   if(selDayun<0){el('liunian').innerHTML='';return;}
   var d=dayunList[selDayun],out='',years=yearsForRow(d);
@@ -4176,11 +4150,12 @@ function renderLiunian(){
   }
   for(var i=0;i<years.length;i++){
     var y=years[i],x=transitionForYearOf(selDayun,y),now=y===NOW_YEAR;
-    var title=[now?'今年':'',transitionText(x)].filter(Boolean).join('；');
-    out+='<button type="button" class="chip'+(y===selYear?' on':'')+(now?' now':'')+(x?' cross':'')+'" data-ln="'+y+'"'
+      var la=lichunWallOf(y),ph=la!=null?phaseMarkAt(la):null;
+    var title=[now?'今年':'',transitionText(x),ph?'月朔 '+ph.full:''].filter(Boolean).join('；');
+    out+='<button type="button" class="chip'+(y===selYear?' on':'')+(now?' now':'')+(x?' cross':'')+(ph?' ph':'')+'" data-ln="'+y+'"'
       +' aria-pressed="'+(y===selYear)+'"'+(title?' title="'+esc(title)+'"':'')+'>'
       +'<span class="cs">'+String(y).slice(2)+'</span>'+stackGZ(yearGZ(y))
-      +transitionMark(x)+(now?'<span class="sr-only">今年</span>':'')+'</button>';
+      +transitionMark(x)+(ph?ph.html:'')+(now?'<span class="sr-only">今年</span>':'')+'</button>';
   }
   /* 欄數必須跟著實際個數走。收了跨運年之後這一列會是 11 格，
      而 markup 裡寫死的是 --n:10——第 11 格會擠到第二行。
@@ -4231,11 +4206,13 @@ function renderLiuyue(){
   }
   el('liuyue').innerHTML=ms.map(function(m,i){
     var isX=i===xIdx;
-    var title=[i===nowIdx?'本月':'',isX?transitionText(xt):''].filter(Boolean).join('；');
+    var ph=phaseMarkAt(wall(m));
+    var title=[i===nowIdx?'本月':'',isX?transitionText(xt):'',ph?'月朔 '+ph.full:''].filter(Boolean).join('；');
     return '<button type="button" class="chip'+(i===selMonth?' on':'')+(i===nowIdx?' now':'')
-      +(isX?' cross':'')+'" data-ly="'+i+'"'
+      +(isX?' cross':'')+(ph?' ph':'')+'" data-ly="'+i+'"'
       +' aria-pressed="'+(i===selMonth)+'"'+(title?' title="'+esc(title)+'"':'')+'>'
       +'<span class="cs">'+m.m+'/'+m.d+'</span>'+stackGZ(m.gz)
+      +(ph?ph.html:'')
       +(isX?transitionMark(xt):'')
       +(i===nowIdx?'<span class="sr-only">本月</span>':'')+'</button>';
   }).join('');
@@ -4272,9 +4249,12 @@ function renderLiuri(){
   var ty=NOW.y,tm=NOW.m,td=NOW.d;
   box.innerHTML=ds.map(function(x,i){
     var isToday=(x.y===ty&&x.m===tm&&x.d===td);
-    return '<button type="button" class="chip'+(i===selDay?' on':'')+(isToday?' now':'')+'" data-lr="'+i+'"'
-      +' aria-pressed="'+(i===selDay)+'"'+(isToday?' title="今日"':'')+'>'
+    var ph=phaseMarkAt(wall({y:x.y,m:x.m,d:x.d,h:0,mi:0,s:0}));
+    var title=[isToday?'今日':'',ph?'月朔 '+ph.full:''].filter(Boolean).join('；');
+    return '<button type="button" class="chip'+(i===selDay?' on':'')+(isToday?' now':'')+(ph?' ph':'')+'" data-lr="'+i+'"'
+      +' aria-pressed="'+(i===selDay)+'"'+(title?' title="'+esc(title)+'"':'')+'>'
       +'<span class="cs">'+x.m+'/'+x.d+'</span>'+stackGZ(x.gz)
+      +(ph?ph.html:'')
       +(isToday?'<span class="sr-only">今日</span>':'')+'</button>';
   }).join('');
   note.textContent=ds.length?(ds[0].m+'/'+ds[0].d+'–'+ds[ds.length-1].m+'/'+ds[ds.length-1].d+'　共 '+ds.length+' 天'):'';
