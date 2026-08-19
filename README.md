@@ -28,7 +28,7 @@
 
 所有計算都在你自己的裝置上完成。
 
-**不上傳、也不儲存**出生日期、出生時間、性別或排盤結果。`localStorage` 裡只有三個顯示偏好：四柱排列、流年排列、晚子時口徑。沒有帳戶、沒有雲端同步、沒有分析追蹤。
+**不上傳、也不儲存**出生日期、出生時間、性別或排盤結果。`localStorage` 裡只有三個顯示偏好：四柱排列、流年排列、晚子時口徑。預設隱藏的個人研究解鎖與勾選也不儲存，重新載入即重設。沒有帳戶、沒有雲端同步、沒有分析追蹤。
 
 ---
 
@@ -76,6 +76,9 @@
 | `README.md` | `pwa/README.md` |
 | `icons/*` | `tools/make_paipan_icons.py` |
 | 曆法與大運 | `lib/calendar.js`、`lib/solar_terms.js`、`lib/dayun.js` |
+
+預設隱藏的月朔運個人研究層另由 `lib/lunar_new_moons.js` 與 `lib/lunar_dayun.js` 提供；
+它不改正常節氣運，口徑與回滾邊界見母專案 `docs/月朔運V0.1狀態.md`。
 
 改完跑 `python3 tools/build_paipan.py`，再把這個資料夾 push 上去。
 
