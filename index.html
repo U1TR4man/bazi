@@ -3693,6 +3693,43 @@ function selectedMonthRange(){
   if(!next)return null;
   return {start:a,end:wall(next)};
 }
+/* 所選大運柱的六候（V0.3.4 UI）。
+
+   月朔運的研究粒度到這裡才齊：**某一刻在哪一候**（`cursorAt`，上方六候帶）、
+   **這個月跨過哪些候**（`segmentsBetween` ＋ 流月分段）、
+   **這一步運裡六候各自從何時開始**（本函式）。缺了最粗的這一層，
+   要看整步運的節奏就得一個月一個月點過去。
+
+   走 `segmentsBetween(step.startAt, step.endAt)` 而不是直接叫 `phaseWindows()`：
+   兩者的邊界同源，但前者已經被十四條測試釘過，而且與流月分段共用同一條路徑——
+   同一個畫面上的兩塊資料若各走各的，哪天不一致會很難查。
+
+   只寫每一候的**起**時刻，不寫訖：整柱六段嚴格相接且鋪滿整步，
+   每一段的訖就是下一段的起，寫出來是同一個數字印兩次。
+   整步的訖在末行講一次就夠。（流月分段那邊兩端都寫，是因為那個範圍
+   由所選流月裁出來，兩端都不是讀者已知的數字。） */
+function renderLunarStepPhases(){
+  if(luckMode!=='lunar')return '';
+  if(!(lunarDy&&lunarDy.model))return '';
+  var st=lunarDy.model.steps[selDayun];
+  if(!st)return '';
+  var res;
+  try{res=LunarDayun.segmentsBetween(lunarDy.model,st.startAt,st.endAt);}catch(e){return '';}
+  /* 引擎保證整柱恰好切成六段（test_lunar_dayun 有鎖）。
+     真的不是六段就什麼都不畫——寧可少一塊，也不要畫一塊我解釋不了的東西。 */
+  if(res.segments.length!==6)return '';
+  var rows=res.segments.map(function(s){
+    return '<li><i>'+esc(s.sixPhase.trigram)+'</i><em>'+fmtResearchCursor(s.start)+' 起</em></li>';
+  }).join('');
+  /* data-span 讓兩塊在 DOM 上可分辨。兩者共用 .lunar-span 的樣式，
+     但語義不同（一步運 vs 一個流月）——沒有標記的話，
+     任何「找 .lunar-span」的程式或測試都只會抓到先出現的那一塊。 */
+  return '<div class="lunar-span" data-span="step">'
+    +'<div class="lunar-span-head"><b>所選大運 · 六候</b><span>'+esc(st.pillar)+'</span></div>'
+    +'<ol class="lunar-span-list">'+rows+'</ol>'
+    +'<p class="lunar-six-note">此運 '+fmtResearchCursor(st.startAt)
+    +' 至 '+fmtResearchCursor(st.endAt)+'。</p></div>';
+}
 /* 流月六候分段（V0.3.3 UI）。純顯示層：只把 Engine 的 segmentsBetween()
    畫出來，不自己判斷候界，也不改主盤的大運／流年／流月／流日任何一個選取。
 
@@ -3709,12 +3746,12 @@ function renderLunarSpan(){
   if(luckMode!=='lunar')return '';
   if(!(lunarDy&&lunarDy.model))return '';
   var r=selectedMonthRange();
-  if(!r)return '<div class="lunar-span"><p class="lunar-six-note">未選流月，暫不分段。點流年下方的月份即可。</p></div>';
+  if(!r)return '<div class="lunar-span" data-span="month"><p class="lunar-six-note">未選流月，暫不分段。點流年下方的月份即可。</p></div>';
   var res;
   try{res=LunarDayun.segmentsBetween(lunarDy.model,r.start,r.end);}catch(e){return '';}
   var segs=res.segments;
   if(!segs.length)
-    return '<div class="lunar-span"><p class="lunar-six-note">所選流月不在研究時間範圍內。</p></div>';
+    return '<div class="lunar-span" data-span="month"><p class="lunar-six-note">所選流月不在研究時間範圍內。</p></div>';
   /* 整月只在一候時就只有一段——不為了「看起來像分段」而切出第二段。
      這一句只是把「共 1 段」講成人話，沒有多畫任何東西。 */
   var count=segs.length===1?'整月同在 '+segs[0].sixPhase.trigram+' 候':'共 '+segs.length+' 段';
@@ -3725,7 +3762,7 @@ function renderLunarSpan(){
       +'<em>'+fmtResearchCursor(s.start)+' 至 '+fmtResearchCursor(s.endExclusive)+'</em>'
       +(cyc?'<small>交入 '+esc(s.pillar)+' 運</small>':'')+'</li>';
   }).join('');
-  return '<div class="lunar-span">'
+  return '<div class="lunar-span" data-span="month">'
     +'<div class="lunar-span-head"><b>所選流月 · 六候分段</b><span>'+count+'</span></div>'
     +'<ol class="lunar-span-list">'+rows+'</ol>'
     +'<p class="lunar-six-note">分段時刻出自研究模型，不是天文月相。</p></div>';
@@ -3779,7 +3816,7 @@ function renderLunarCompare(){
     +'<div class="lunar-compare-cell"><small>月朔首運</small><strong>'+fmtYmd(lunarDy.model.firstStartLocal)+'</strong></div>'
     +'<div class="lunar-compare-cell"><small>起運差 Δ</small><strong>'+deltaText+'</strong></div></div>'
     +'<p class="lunar-compare-now">'+cursor+'　·　節氣 '+solarP+'　／　月朔 '+lunarP+'　·　'+researchRelationLabel(cur.relation)+'</p>'
-    +'<p class="lunar-phase">'+phaseText+'；只記錄，不作吉凶判斷。</p>'+sixStrip+renderLunarSpan();
+    +'<p class="lunar-phase">'+phaseText+'；只記錄，不作吉凶判斷。</p>'+sixStrip+renderLunarStepPhases()+renderLunarSpan();
 }
 function renderDayun(){
   /* 欄數必須跟著實際步數走。
