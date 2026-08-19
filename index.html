@@ -723,8 +723,43 @@
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
+<script id="paipan-true-conjunctions">
+/* 真合朔時刻表（Phase D 專用；由 tools/gen_true_conjunctions.mjs 生成，勿手改）。
+
+   與 lib/lunar_new_moons.js **平行**存在，不取代它：
+     lunar_new_moons.js   農曆初一的民用日 00:00（術數用，離散）
+     本檔                 日月黃經合的那一刻（天文用，精確到分）
+   同一個朔，兩者可以差將近一整天。
+
+   時區：UTC+8 民用牆鐘，與 Engine 其他部分同一口徑。
+   單位：分鐘。存的是「與平均朔望月的偏差」，讀取時再累加回去——
+   直接存絕對值會多佔約十倍空間，而這份表要內嵌進單檔排盤器。
+   本批最大偏差 1304 分鐘（約 21.7 小時）。 */
+(function (g) {
+  'use strict';
+  var BASE = -36857712, MEAN = 42524.0546;
+  var DEV = '0,20,-53,-215,-434,-665,-862,-989,-1017,-931,-732,-446,-140,100,211,176,20,-220,-503,-792,-1039,-1186,-1178,-990,-651,-256,82,284,328,224,-5,-323,-679,-1005,-1227,-1281,-1140,-834,-437,-47,249,392,353,148,-175,-544,-884,-1128,-1233,-1177,-965,-628,-234,116,326,347,195,-72,-385,-684,-926,-1078,-1113,-1006,-761,-433,-113,110,192,142,-10,-223,-461,-686,-861,-948,-927,-803,-612,-402,-211,-70,-1,-18,-116,-270,-441,-587,-688,-746,-768,-751,-682,-555,-392,-237,-133,-101,-126,-187,-270,-382,-525,-684,-817,-880,-847,-725,-547,-351,-168,-25,48,26,-98,-303,-547,-780,-958,-1045,-1020,-871,-610,-289,7,196,234,129,-82,-358,-659,-939,-1146,-1221,-1119,-839,-449,-62,216,339,302,125,-160,-509,-860,-1142,-1283,-1235,-999,-632,-226,124,344,392,261,-13,-368,-728,-1021,-1193,-1212,-1075,-797,-427,-51,231,343,272,57,-235,-539,-804,-996,-1088,-1056,-884,-600,-277,-9,140,155,56,-120,-337,-561,-756,-887,-924,-859,-712,-523,-331,-169,-61,-23,-67,-181,-335,-488,-610,-694,-746,-766,-742,-658,-516,-348,-203,-117,-98,-129,-193,-288,-423,-591,-759,-878,-906,-832,-675,-473,-263,-80,45,79,4,-172,-414,-672,-895,-1039,-1076,-986,-768,-456,-122,139,258,218,47,-211,-513,-817,-1071,-1220,-1207,-1006,-650,-239,109,312,349,233,-9,-337,-697,-1022,-1239,-1284,-1133,-818,-420,-33,255,387,339,127,-195,-558,-886,-1117,-1209,-1146,-936,-611,-236,96,292,309,160,-96,-393,-673,-895,-1034,-1064,-967,-745,-445,-152,54,134,93,-40,-228,-439,-641,-802,-888,-882,-786,-631,-452,-283,-146,-63,-52,-117,-240,-386,-519,-624,-701,-754,-773,-737,-632,-473,-302,-169,-99,-92,-129,-203,-322,-486,-674,-839,-930,-916,-798,-605,-381,-164,9,102,84,-49,-274,-543,-801,-999,-1099,-1074,-912,-630,-282,38,240,278,162,-66,-361,-677,-968,-1179,-1251,-1139,-845,-438,-40,243,360,312,123,-172,-525,-876,-1153,-1285,-1227,-984,-614,-213,129,338,375,240,-34,-383,-732,-1012,-1169,-1180,-1041,-774,-422,-66,199,303,233,27,-250,-535,-780,-955,-1038,-1009,-857,-602,-309,-63,78,98,16,-135,-324,-522,-699,-824,-870,-830,-718,-565,-400,-249,-132,-71,-82,-162,-287,-422,-542,-640,-719,-774,-785,-728,-597,-421,-251,-131,-76,-79,-128,-225,-376,-570,-768,-916,-968,-904,-740,-515,-273,-56,93,138,58,-135,-401,-683,-927,-1086,-1128,-1032,-797,-459,-100,178,301,255,69,-208,-526,-840,-1100,-1248,-1228,-1014,-643,-220,133,334,362,234,-18,-352,-713,-1033,-1240,-1276,-1117,-799,-403,-26,250,372,318,106,-212,-566,-881,-1097,-1177,-1110,-906,-598,-244,67,252,266,125,-118,-397,-655,-857,-982,-1012,-929,-734,-466,-201,-10,70,43,-66,-226,-408,-588,-738,-828,-843,-779,-660,-512,-359,-222,-121,-80,-111,-202,-326,-451,-564,-663,-748,-802,-796,-709,-551,-363,-197,-91,-51,-68,-138,-267,-454,-671,-866,-982,-984,-865,-657,-403,-153,49,157,138,-8,-253,-546,-825,-1040,-1147,-1119,-945,-640,-268,71,280,314,186,-59,-370,-697,-994,-1205,-1271,-1148,-840,-422,-18,264,374,315,116,-186,-541,-888,-1156,-1278,-1211,-963,-595,-203,126,324,353,214,-56,-396,-732,-995,-1138,-1141,-1004,-751,-422,-90,157,255,189,-5,-263,-525,-747,-905,-982,-962,-833,-610,-349,-124,11,39,-22,-145,-304,-477,-637,-761,-821,-808,-731,-611,-471,-327,-200,-113,-90,-136,-235,-356,-477,-591,-698,-788,-831,-798,-677,-492,-294,-138,-48,-26,-64,-166,-335,-555,-782,-957,-1028,-970,-796,-548,-274,-28,140,190,102,-108,-395,-698,-959,-1129,-1172,-1067,-814,-455,-76,214,337,281,81,-210,-542,-863,-1124,-1267,-1238,-1013,-631,-201,152,347,365,226,-33,-368,-725,-1037,-1233,-1258,-1093,-777,-390,-27,236,347,288,78,-231,-570,-869,-1068,-1136,-1067,-875,-589,-261,28,201,215,85,-139,-394,-628,-810,-925,-958,-894,-729,-495,-257,-79,4,-6,-88,-217,-371,-531,-672,-770,-806,-776,-693,-575,-438,-298,-178,-105,-99,-159,-262,-383,-507,-630,-748,-835,-858,-787,-626,-416,-218,-76,-6,-7,-76,-219,-429,-673,-895,-1034,-1046,-925,-699,-417,-138,88,207,187,27,-238,-551,-849,-1076,-1188,-1156,-968,-645,-253,100,314,343,202,-58,-382,-717,-1015,-1222,-1280,-1148,-830,-405,0,276,377,308,101,-204,-555,-894,-1150,-1261,-1187,-938,-579,-200,113,298,321,184,-79,-405,-724,-969,-1099,-1096,-967,-733,-431,-125,105,199,142,-34,-269,-506,-706,-848,-924,-917,-814,-626,-397,-192,-62,-21,-57,-150,-279,-425,-572,-696,-774,-792,-751,-665,-546,-408,-267,-151,-92,-104,-177,-288,-414,-549,-687,-809,-883,-870,-754,-555,-329,-136,-14,31,-1,-111,-301,-546,-800,-999,-1085,-1031,-846,-574,-271,2,187,240,142,-86,-393,-715,-990,-1167,-1209,-1093,-824,-445,-50,246,366,299,85,-220,-559,-883,-1141,-1276,-1237,-1003,-615,-184,164,350,358,212,-50,-384,-732,-1034,-1218,-1234,-1066,-755,-382,-36,212,314,254,51,-246,-568,-848,-1030,-1089,-1023,-847,-586,-288,-21,143,162,47,-155,-385,-594,-757,-864,-905,-863,-731,-533,-321,-153,-64,-53,-106,-202,-328,-468,-605,-715,-777,-782,-734,-644,-519,-372,-228,-120,-78,-110,-197,-317,-457,-607,-755,-874,-920,-861,-696,-463,-231,-54,41,53,-19,-178,-412,-682,-928,-1084,-1105,-979,-733,-424,-116,129,255,228,52,-232,-563,-876,-1111,-1224,-1184,-982,-641,-233,129,341,361,209,-64,-396,-735,-1031,-1231,-1280,-1138,-814,-388,12,279,370,293,82,-221,-567,-894,-1137,-1236,-1155,-909,-563,-202,93,264,283,149,-102,-411,-710,-937,-1052,-1046,-929,-719,-447,-168,47,140,94,-60,-270,-481,-658,-788,-864,-875,-802,-650,-452,-266,-135,-79,-89,-148,-245,-368,-505,-634,-732,-781,-777,-722,-622,-485,-328,-183,-87,-66,-118,-222,-358,-514,-680,-833,-934,-939,-825,-611,-355,-128,24,86,57,-65,-275,-546,-823,-1041,-1139,-1084,-886,-590,-260,35,231,281,171,-74,-398,-734,-1019,-1198,-1235,-1108,-824,-431,-28,270,384,308,82,-232,-576,-898,-1149,-1275,-1227,-986,-596,-170,168,343,342,191,-73,-400,-737,-1023,-1193,-1200,-1032,-732,-378,-53,178,272,213,21,-259,-561,-819,-985,-1036,-978,-822,-591,-323,-77,78,105,9,-167,-369,-552,-698,-800,-852,-836,-739,-576,-389,-231,-132,-98,-118,-181,-278,-403,-539,-663,-752,-792,-779,-713,-598,-443,-274,-131,-53,-58,-132,-256,-411,-588,-767,-914,-982,-932,-758,-502,-237,-28,91,111,32,-144,-401,-695,-961,-1131,-1156,-1022,-758,-424,-93,167,296,261,71,-230,-576,-899,-1139,-1249,-1201,-986,-632,-213,152,361,372,208,-73,-411,-750,-1039,-1229,-1268,-1119,-793,-373,19,275,355,270,58,-240,-573,-884,-1112,-1199,-1115,-879,-552,-213,63,222,239,113,-122,-410,-685,-893,-998,-994,-892,-710,-472,-219,-16,79,47,-85,-264,-445,-600,-722,-804,-835,-795,-680,-515,-343,-209,-134,-114,-139,-203,-305,-436,-576,-696,-777,-808,-784,-701,-561,-383,-207,-76,-23,-56,-158,-306,-485,-679,-861,-987,-1006,-891,-658,-373,-114,64,140,110,-27,-258,-549,-846,-1081,-1186,-1129,-916,-597,-243,68,270,316,193,-67,-406,-753,-1044,-1222,-1252,-1116,-819,-415,-7,288,396,308,73,-247,-591,-908,-1149,-1264,-1207,-963,-578,-162,165,327,318,164,-95,-411,-732,-1001,-1157,-1157,-995,-712,-381,-78,137,224,170,-8,-268,-546,-782,-932,-980,-931,-800,-603,-366,-140,12,49,-26,-174,-344,-502,-633,-737,-803,-815,-756,-628,-465,-309,-196,-137,-123,-150,-221,-334,-475,-617,-735,-808,-828,-786,-676,-507,-311,-134,-22,-2,-68,-200,-375,-577,-783,-955,-1042,-997,-812,-531,-234,3,140,164,74,-120,-397,-709,-992,-1173,-1199,-1055,-772,-415,-65,204,331,286,81,-234,-591,-920,-1160,-1265,-1208,-982,-617,-194,169,372,374,200,-88,-427,-761,-1041,-1219,-1250,-1094,-771,-361,15,259,329,241,31,-257,-575,-868,-1080,-1157,-1074,-850,-545,-233,22,171,189,76,-141,-405,-656,-844,-941,-941,-859,-708,-504,-278,-87,13,0,-103,-252,-405,-540,-655,-748,-803,-797,-719,-582,-423,-283,-185,-133,-122,-156,-241,-369,-521,-667,-781,-846,-847,-777,-634,-435,-224,-57,24,5,-98,-261,-463,-685,-893,-1038,-1068,-949,-698,-383,-94,107,191,155,4,-246,-557,-872,-1117,-1227,-1163,-936,-597,-225,99,304,342,207,-68,-418,-773,-1065,-1239,-1260,-1112,-806,-397,10,299,397,301,58,-264,-604,-912,-1141,-1244,-1180,-937,-563,-162,150,301,286,133,-117,-419,-722,-972,-1116,-1112,-958,-696,-392,-114,85,169,123,-37,-272,-524,-737,-875,-922,-888,-784,-622,-417,-210,-60,-8,-58,-174,-314,-447,-568,-675,-760,-802,-779,-685,-541,-388,-259,-170,-121,-115,-162,-267,-414,-576,-725,-832,-881,-858,-751,-568,-342,-129,15,55,-7,-148,-344,-572,-804,-998,-1098,-1055,-858,-552,-226,36,186,211,111,-102,-398,-728,-1023,-1210,-1233,-1078,-779,-403,-39,235,358,302,84,-244,-608,-940,-1176,-1272,-1204,-970,-600,-178,180,373,366,185,-106,-443,-768,-1035,-1200,-1220,-1066,-750,-355,5,231,295,206,3,-271,-571,-844,-1039,-1108,-1030,-824,-546,-261,-27,112,135,37,-155,-392,-619,-789,-879,-889,-831,-713,-543,-344,-163,-54,-44,-116,-233,-359,-478,-590,-695,-775,-805,-762,-652,-503,-354,-232,-145,-99,-105,-175,-305,-472,-645,-790,-886,-911,-851,-700,-478,-234,-32,74,65,-42,-222,-448,-696,-926,-1088,-1124,-998,-728,-387,-71,147,237,195,28,-240,-569,-897,-1150,-1259,-1188,-947,-591,-204,127,330,360,211,-75,-433,-791,-1079,-1246,-1257,-1100,-789,-380,21,301,389,285,39,-281,-614,-909,-1124,-1216,-1148,-910,-549,-168,126,266,247,99,-139,-422,-704,-936,-1067,-1062,-922,-685,-411,-159,25,108,77,-61,-269,-495,-687,-813,-864,-848,-775,-648,-474,-285,-134,-64,-84,-168,-277,-391,-500,-614,-721,-796,-808,-745,-620,-465,-317,-197,-110,-73,-101,-201,-359,-545,-723,-861,-936,-927,-820,-620,-365,-117,55,111,50,-103,-320,-573,-828,-1040,-1150,-1106,-896,-567,-213,70,230,252,139,-91,-404,-748,-1051,-1240,-1258,-1092,-777,-388,-15,260,375,308,79,-256,-625,-954,-1183,-1269,-1192,-952,-582,-166,182,365,349,164,-126,-456,-770,-1022,-1174,-1185,-1032,-730,-354,-16,198,253,167,-26,-282,-560,-813,-992,-1056,-985,-801,-554,-300,-88,48,79,1,-163,-372,-574,-729,-816,-839,-808,-726,-591,-415,-241,-121,-85,-123,-208,-307,-411,-525,-646,-755,-820,-811,-725,-583,-423,-273,-151,-70,-51,-110,-246,-431,-631,-807,-930,-974,-920,-759,-514,-236,-3,124,122,8,-191,-441,-711,-961,-1134,-1174,-1039,-751,-384,-45,187,278,226,44,-242,-584,-921,-1177,-1283,-1203,-949,-580,-184,149,346,367,208,-86,-449,-805,-1087,-1244,-1244,-1081,-769,-367,24,292,371,261,15,-300,-621,-900,-1099,-1180,-1110,-882,-541,-182,92,222,202,63,-158,-420,-679,-892,-1013,-1011,-889,-681,-440,-213,-42,45,29,-82,-261,-458,-631,-749,-807,-813,-773,-683,-539,-365,-210,-119,-107,-155,-234,-327,-433,-558,-689,-796,-844,-809,-698,-540,-371,-217,-95,-28,-40,-139,-311,-520,-727,-894,-991,-993,-883,-665,-380,-100,97,165,101,-67,-304,-580,-855,-1082,-1197,-1149,-924,-573,-196,104,269,285,158,-88,-415,-768,-1076,-1262,-1273,-1096,-769,-372,5,275,383,306,68,-272,-640,-963,-1182,-1257,-1172,-929,-565,-160,174,346,323,136,-149,-468,-765,-1000,-1138,-1144,-997,-712,-362,-46,153,204,123,-54,-289,-543,-774,-939,-1001,-943,-785,-570,-346,-152,-21,21,-32,-167,-346,-524,-665,-754,-793,-792,-746,-644,-492,-322,-187,-121,-125,-175,-250,-344,-463,-603,-742,-841,-864,-799,-661,-486,-307,-149,-36,5,-48,-191,-396,-623,-828,-976,-1035,-984,-811,-540,-231,29,173,173,48,-168,-441,-731,-996,-1177,-1215,-1071,-764,-376,-19,222,310,248,51,-248,-601,-943,-1198,-1298,-1208,-944,-567,-166,165,355,365,198,-102,-465,-816,-1089,-1233,-1225,-1055,-748,-357,19,273,342,230,-12,-316,-621,-883,-1066,-1137,-1069,-856,-539,-206,48,170,153,27,-174,-411,-648,-843,-956,-961,-860,-683,-476,-275,-114,-21,-16,-99,-245,-416,-570,-683,-752,-784,-779,-725,-609,-447,-284,-168,-122,-135,-185,-262,-368,-506,-663,-804,-884,-875,-776,-611,-418,-231,-74,20,21,-81,-268,-501,-736,-929,-1045,-1054,-939,-702,-388,-79,140,215,146,-39,-297,-592,-884,-1119,-1236,-1181,-942,-571,-177,135,301,308,169,-91,-429,-788,-1096,-1277,-1280,-1092,-757,-355,20,283,381,295,52,-289,-652,-966,-1172,-1236,-1144,-904,-551,-162,155,316,289,106,-171,-474,-753,-970,-1095,-1099,-962,-700,-377,-85,99,149,78,-80,-292,-520,-729,-882,-945,-903,-773,-594,-400,-224,-94,-35,-62,-164,-313,-468,-600,-693,-753,-784,-774,-705,-571,-402,-248,-151,-119,-137,-190,-278,-405,-566,-736,-868,-920,-872,-735,-544,-335,-142,2,62,12,-142,-369,-621,-853,-1021,-1092,-1040,-854,-558,-221,64,220,218,80,-154,-445,-752,-1028,-1213,-1247,-1093,-769,-363,7,252,335,261,51,-259,-619,-961,-1212,-1304,-1205,-932,-550,-151,173,353,354,181,-120,-479,-821,-1080,-1212,-1194,-1026,-727,-354,3,243,306,195,-39,-329,-616,-857,-1024,-1089,-1027,-832,-543,-238,-4,110,100,-11,-187,-397,-609,-787,-896,-912,-835,-693,-519,-343,-191,-88,-59,-109,-223,-367,-505,-619'.split(',');
+  var mins = new Array(DEV.length);
+  for (var i = 0; i < DEV.length; i++) mins[i] = Math.round(BASE + i * MEAN) + (+DEV[i]);
+  var API = {
+    version: '1.0',
+    zone: 'UTC+8',
+    kind: 'ASTRONOMICAL_CONJUNCTION',
+    source: 'lunar-javascript ShouXingUtil.shuoHigh（壽星天文曆）',
+    accuracy: '與公開合朔表比對誤差在一分鐘內；研究用途，非曆算權威來源',
+    coverage: '1899-12-03 ~ 2102-01-19',
+    count: 2501,
+    /* 牆鐘毫秒；半開查找由 lib/lunar_dayun.js 負責，本檔只提供資料。 */
+    at: function (i) { return mins[i] * 60000; },
+    all: function () { return mins.map(function (v) { return v * 60000; }); }
+  };
+  if (typeof module !== 'undefined' && module.exports) module.exports = API;
+  g.ZipingTrueConjunctions = API;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+
+</script>
 <script id="paipan-lunar-dayun">
-/* 月朔運 V0.3.3（個人研究模型）。
+/* 月朔運 V0.4（個人研究模型）。
 
    與節氣大運共用：出生四柱、順逆、第一步大運干支、九步干支序列、固定十年運長。
    唯一改變：起運間隔不量到節，而量到前／後一個「農曆初一的民用日 00:00」。
@@ -733,25 +768,73 @@
    它只依賴 lib/calendar.js 與由 tools/gen_lunar_new_moons.mjs 生成的日期表。
    V0.3 在積朔 A、運內朔運日 S、相位角 theta 之上加入六候階段；V0.3.2
    再加入任意民用日期時間的研究游標及下一候倒數；V0.3.3 加入時間範圍分段查詢。
-   不做天文真合朔、事件回測、權重、總分或吉凶判斷。 */
+
+   **V0.4 換掉了相位模型**：廢除 V0.3 的平均六等分，改用《參同契》月體納甲的
+   非等距節點 0／3／8／15／16／23／30，並把「節點」與「節點之間的階段」分成兩層。
+   起運口徑（曆日初一）完全沒動——動的是 30 朔運日內怎麼切，所以 model 與
+   phaseModel 分開標版本。這次的相位讀數與 V0.3 不可比，是**刻意的口徑變更**。
+
+   不做事件回測、權重、總分或吉凶判斷。天文真合朔另立獨立模式，不覆蓋本模型。 */
 (function (g) {
   'use strict';
   var isNode = typeof module !== 'undefined' && module.exports;
   var Cal = isNode ? require('./calendar.js') : g.ZipingCal;
   var Moons = isNode ? require('./lunar_new_moons.js') : g.ZipingLunarNewMoons;
+  /* Phase D 的真合朔表是**選配**：載了才有天文模式，沒載就只有曆日初一模式。
+     刻意不 throw——公開排盤器的一般使用者不需要它，
+     少一份 13 KB 的內嵌資料比多一個載入失敗有價值。 */
+  var Conj = isNode ? (function () { try { return require('./true_conjunctions.js'); } catch (e) { return null; } })()
+                    : g.ZipingTrueConjunctions;
   if (!Cal) throw new Error('lunar_dayun.js：找不到 ZipingCal（請先載入 lib/calendar.js）');
   if (!Moons || !Array.isArray(Moons.dates))
     throw new Error('lunar_dayun.js：找不到月朔日期表（請先載入 lib/lunar_new_moons.js）');
 
   var GAN = Cal.GAN, ZHI = Cal.ZHI;
-  var SIX_PHASES = [
-    { id: 'zhen', trigram: '震', start: 0, end: 5, moonBody: '一陽初生', stage: '啟動、萌芽' },
-    { id: 'dui',  trigram: '兌', start: 5, end: 10, moonBody: '陽漸增', stage: '展開、建立' },
-    { id: 'qian', trigram: '乾', start: 10, end: 15, moonBody: '趨盛至滿', stage: '擴張、顯化' },
-    { id: 'xun',  trigram: '巽', start: 15, end: 20, moonBody: '一陰始生', stage: '盛極轉折' },
-    { id: 'gen',  trigram: '艮', start: 20, end: 25, moonBody: '陰漸增', stage: '收斂、止、兌現' },
-    { id: 'kun',  trigram: '坤', start: 25, end: 30, moonBody: '歸藏', stage: '收尾、等待復始' }
+  /* 《參同契》月體納甲的**非等距**節點（V0.4，取代 V0.3 的平均六等分）。
+
+     舊版把 30 朔運日切成六個等寬 5 日區間，那只是實作方便，不是古典模型。
+     古籍給的是「某日月體成某卦象」的**節點**：初三震、初八兌、十五乾、
+     十六巽、二十三艮、三十坤，朔（0）為復始零點。
+
+     最重要的結構是 **乾 15 與巽 16 只差一日**——盛極之後立刻轉折，
+     沒有「峰值平台」。等分模型把乾攤成 10–15（十年裡的第 3.3 到 5 年），
+     等於憑空造出兩年的高原期；那是模型假造的，不是古法說的。
+
+     映射：30 朔運日 = 10 年，故 3 朔運日 = 1 年、1 朔運日 = 4 個月。
+       復 0 → 0 年 ／ 震 3 → 1 年 ／ 兌 8 → 2 年 8 月 ／ 乾 15 → 5 年
+       巽 16 → 5 年 4 月 ／ 艮 23 → 7 年 8 月 ／ 坤 30 → 10 年 */
+  var PHASE_NODES = [
+    { id: 'fu',   trigram: '復', value: 0,  moonBody: '朔',       label: '新運初啟' },
+    { id: 'zhen', trigram: '震', value: 3,  moonBody: '一陽初生', label: '氣機發動' },
+    { id: 'dui',  trigram: '兌', value: 8,  moonBody: '上弦',     label: '漸次成形' },
+    { id: 'qian', trigram: '乾', value: 15, moonBody: '望',       label: '盛滿顯化' },
+    { id: 'xun',  trigram: '巽', value: 16, moonBody: '一陰始生', label: '盛極轉折' },
+    { id: 'gen',  trigram: '艮', value: 23, moonBody: '下弦',     label: '收斂定型' },
+    { id: 'kun',  trigram: '坤', value: 30, moonBody: '晦',       label: '歸藏待復' }
   ];
+
+  /* 階段＝節點之間的連續區間，仍是六段，但**寬度不等**：3／5／7／1／7／7。
+
+     刻意不把整段叫「震」「兌」：古籍定義的是某一日月體成某卦，
+     不是說兩個節點之間整段都等於前一卦。S=4 講「震→兌」比講「震卦」誠實。
+     UI 只有在 S 貼近某個節點時（見 NODE_TOLERANCE）才報單一卦名。 */
+  var PHASE_STAGES = [
+    { id: 'FU_TO_ZHEN',  from: 'fu',   to: 'zhen', start: 0,  end: 3  },
+    { id: 'ZHEN_TO_DUI', from: 'zhen', to: 'dui',  start: 3,  end: 8  },
+    { id: 'DUI_TO_QIAN', from: 'dui',  to: 'qian', start: 8,  end: 15 },
+    { id: 'QIAN_TO_XUN', from: 'qian', to: 'xun',  start: 15, end: 16 },
+    { id: 'XUN_TO_GEN',  from: 'xun',  to: 'gen',  start: 16, end: 23 },
+    { id: 'GEN_TO_KUN',  from: 'gen',  to: 'kun',  start: 23, end: 30 }
+  ];
+
+  /* 只是 UI 標籤策略，不是古法規則：S 距某節點 ≤ 0.25 朔運日（約一個月）時，
+     可以直接報那個卦名而不報區間。改這個數字不影響任何邊界判定。 */
+  var NODE_TOLERANCE = 0.25;
+
+  function nodeById(id) {
+    for (var i = 0; i < PHASE_NODES.length; i++) if (PHASE_NODES[i].id === id) return PHASE_NODES[i];
+    return null;
+  }
   function yearGZ(y) { var i = ((y - 1984) % 60 + 60) % 60; return GAN[i % 10] + ZHI[i % 12]; }
   function gzOf(i) { i = ((i % 60) + 60) % 60; return GAN[i % 10] + ZHI[i % 12]; }
   function wall(o) { return Date.UTC(o.y, o.m - 1, o.d, o.h || 0, o.mi || 0, o.s || 0); }
@@ -776,19 +859,42 @@
   function decode(n) { return { y: Math.floor(n / 10000), m: Math.floor(n / 100) % 100, d: n % 100 }; }
   var ANCHORS = Moons.dates.map(function (n) { var o = decode(n); return { local: o, at: midnight(o) }; });
 
-  /* 半開邊界：順行取嚴格晚於出生時刻的下一個初一；逆行取不晚於出生時刻的
-     最近初一。故初一 00:00 恰好出生時，順行走到下月，逆行間隔為 0。 */
-  function anchorFor(birthAt, fwd) {
-    var lo = 0, hi = ANCHORS.length;
+  /* 兩種錨點模式（Phase D）。**平行存在，天文模式不覆蓋曆日模式**。
+
+       CIVIL_NEW_MOON_DAY      農曆初一那一天的 00:00。術數口徑，離散到日。
+       ASTRONOMICAL_CONJUNCTION 日月黃經合的那一刻。天文口徑，精確到分。
+
+     同一個朔，兩者最多差將近一整天（實測 1916-02-03 那次差 24.08 小時），
+     所以起運日會不同，九步大運的干支序列則完全一樣——變的只有時間軸的原點。
+
+     不做兩者的勝負評分。要比就把兩張盤並排看，由人自己判斷。 */
+  var ANCHOR_MODES = { CIVIL: 'CIVIL_NEW_MOON_DAY', ASTRO: 'ASTRONOMICAL_CONJUNCTION' };
+  function anchorsFor(mode) {
+    if (mode === ANCHOR_MODES.ASTRO) {
+      if (!Conj) throw new Error('lunar_dayun.js：未載入真合朔表（lib/true_conjunctions.js），無法用天文模式');
+      if (!ASTRO_ANCHORS) ASTRO_ANCHORS = Conj.all().map(function (ms) {
+        var o = fromWall(ms);
+        return { local: { y: o.y, m: o.m, d: o.d, h: o.h, mi: o.mi }, at: ms };
+      });
+      return ASTRO_ANCHORS;
+    }
+    return ANCHORS;
+  }
+  var ASTRO_ANCHORS = null;
+
+  /* 半開邊界：順行取嚴格晚於出生時刻的下一個錨點；逆行取不晚於出生時刻的
+     最近錨點。故錨點時刻恰好出生時，順行走到下一個，逆行間隔為 0。 */
+  function anchorFor(birthAt, fwd, mode) {
+    var A = anchorsFor(mode), lo = 0, hi = A.length;
     while (lo < hi) {
       var mid = (lo + hi) >> 1;
-      if (ANCHORS[mid].at <= birthAt) lo = mid + 1; else hi = mid;
+      if (A[mid].at <= birthAt) lo = mid + 1; else hi = mid;
     }
-    return fwd ? (ANCHORS[lo] || null) : (ANCHORS[lo - 1] || null);
+    return fwd ? (A[lo] || null) : (A[lo - 1] || null);
   }
 
-  function qiYun(b, fwd) {
-    var birthAt = wall(b), anchor = anchorFor(birthAt, fwd);
+  function qiYun(b, fwd, mode) {
+    var birthAt = wall(b), anchor = anchorFor(birthAt, fwd, mode);
     if (!anchor) return null;
     var mins = Math.round(Math.abs(anchor.at - birthAt) / 60000);
     var td = mins / 1440, tm = td * 4, wholeMonths = Math.floor(tm);
@@ -796,8 +902,12 @@
     if (days >= 30) { wholeMonths += 1; days -= 30; }
     return {
       years: Math.floor(wholeMonths / 12), months: wholeMonths % 12, days: days,
-      exact: td / 3, anchorName: fwd ? '下一朔日' : '上一朔日',
-      anchorLocal: { year: anchor.local.y, month: anchor.local.m, day: anchor.local.d },
+      exact: td / 3,
+      anchorName: (mode === ANCHOR_MODES.ASTRO ? (fwd ? '下一真合朔' : '上一真合朔')
+                                               : (fwd ? '下一朔日' : '上一朔日')),
+      anchorAt: anchor.at,
+      anchorLocal: { year: anchor.local.y, month: anchor.local.m, day: anchor.local.d,
+                     hour: anchor.local.h || 0, minute: anchor.local.mi || 0 },
       anchorDate: String(anchor.local.m).padStart(2, '0') + '.' + String(anchor.local.d).padStart(2, '0'),
       gapDays: Math.floor(mins / 1440), gapHours: Math.floor((mins % 1440) / 60), gapMinutes: mins % 60
     };
@@ -809,15 +919,23 @@
     return jie ? wall(jie) : null;
   }
 
-  function build(birth, gender, opts) {
+  function modelName(mode) {
+    return mode === ANCHOR_MODES.ASTRO ? 'astronomical-conjunction-dayun-v0.4'
+                                       : 'civil-new-moon-dayun-v0.4';
+  }
+  /* anchorMode 是**第四個**參數，預設仍是曆日初一。
+     刻意不塞進 opts——opts 會原封不動轉給 Cal.pillars()，
+     把不屬於曆法的旗標混進去，遲早有人以為那是四柱的選項。 */
+  function build(birth, gender, opts, anchorMode) {
     if (gender !== '乾' && gender !== '坤')
       throw new TypeError("性別欄只接受 '乾' 或 '坤'；缺資料時請保留未知，不得默認成坤造");
+    var mode = anchorMode === ANCHOR_MODES.ASTRO ? ANCHOR_MODES.ASTRO : ANCHOR_MODES.CIVIL;
     var birthMi = birth.mi == null ? 0 : birth.mi;
     var p = Cal.pillars(birth.y, birth.m, birth.d, birth.h, birthMi, 0, opts);
     var yangYear = GAN.indexOf(p.year[0]) % 2 === 0;
     var fwd = (gender === '乾') === yangYear;
-    var qi = qiYun({ y: birth.y, m: birth.m, d: birth.d, h: birth.h, mi: birthMi }, fwd);
-    if (!qi) return { dir: fwd, qi: null, steps: [], model: 'civil-new-moon-dayun-v0.3.2' };
+    var qi = qiYun({ y: birth.y, m: birth.m, d: birth.d, h: birth.h, mi: birthMi }, fwd, mode);
+    if (!qi) return { dir: fwd, qi: null, steps: [], anchorMode: mode, model: modelName(mode) };
 
     var firstDay = addYMD({ y: birth.y, m: birth.m, d: birth.d }, qi.years, qi.months, qi.days);
     var mi0 = Cal.jiaziIndex(p.month), steps = [];
@@ -831,7 +949,7 @@
       });
     }
     return { dir: fwd, qi: qi, firstStartLocal: { year: firstDay.y, month: firstDay.m, day: firstDay.d },
-             steps: steps, model: 'civil-new-moon-dayun-v0.3.2' };
+             steps: steps, anchorMode: mode, model: modelName(mode) };
   }
 
   function yearInfo(dy, year) {
@@ -878,34 +996,101 @@
     return -1;
   }
 
-  /* 六候是月朔運內的階段分類，不是吉凶。區間一律左閉右開：
-       [0,5) 震、[5,10) 兌、[10,15) 乾、[15,20) 巽、[20,25) 艮、[25,30) 坤。
-     S=30 不接受，因為交運當刻已屬下一柱的 S=0（震），不可讓同一時刻雙重歸屬。 */
-  function sixPhaseAt(phaseDay) {
+  function assertShuoDay(phaseDay, what) {
     if (typeof phaseDay !== 'number' || !isFinite(phaseDay))
-      throw new TypeError('lunar_dayun.js：六候需要有效的朔運日 S');
+      throw new TypeError('lunar_dayun.js：' + what + '需要有效的朔運日 S');
     if (phaseDay < 0 || phaseDay >= 30)
       throw new RangeError('lunar_dayun.js：朔運日 S 必須在半開區間 [0,30)');
-    var p = SIX_PHASES[Math.floor(phaseDay / 5)];
+  }
+
+  /* 階段判定，一律左閉右開。S=30 不接受——交運當刻已屬下一柱的 S=0（復），
+     不可讓同一時刻雙重歸屬（規格 §20）。 */
+  function stageAt(phaseDay) {
+    assertShuoDay(phaseDay, '階段');
+    for (var i = 0; i < PHASE_STAGES.length; i++) {
+      var g = PHASE_STAGES[i];
+      if (phaseDay >= g.start && phaseDay < g.end) {
+        var a = nodeById(g.from), b = nodeById(g.to);
+        return {
+          id: g.id, start: g.start, end: g.end,
+          from: a.id, to: b.id,
+          fromTrigram: a.trigram, toTrigram: b.trigram,
+          label: a.trigram + '→' + b.trigram,
+          /* 階段內部進度。與 accumulatedAt 的 progress（＝S/30，整步運的位置）
+             是兩個不同的量，命名上刻意分開，不要互相取代。 */
+          stageProgress: (phaseDay - g.start) / (g.end - g.start)
+        };
+      }
+    }
+    return null;   // assertShuoDay 已保證 [0,30)，走不到這裡
+  }
+
+  /* 最近的古典節點。
+
+     規格 §14 要求環形距離：S=29.9 距下一個 0 只有 0.1，不是 29.9。
+     **這裡用純 |S − v| 就已經滿足**，因為節點表同時含 0（復）與 30（坤），
+     29.9 到 30 的距離本來就是 0.1——繞回已經被端點涵蓋。
+
+     我實測過才這樣寫：加上 Math.min(raw, 30-raw) 之後，復與坤的距離
+     一律變成 min(S, 30-S) 而**必然相等**，等於憑空製造一個平手，
+     再逼我手寫 tie-break（掃 30 萬個 S，有 42243 個因浮點雜訊翻到錯的一側）。
+     去掉環形之後：S<15 時 raw(復)=S 較小、S>15 時 raw(坤)=30-S 較小，
+     自然就報出正確的一側，一行 tie-break 都不用。
+
+     復 0 與 坤 30 是同一個時點的兩個名字；在本運之內，將盡那一刻該報「坤」
+     （歸藏），「復」是下一運的開頭——上面那個自然結果剛好就是這個語義。 */
+  function nearestNodeAt(phaseDay) {
+    assertShuoDay(phaseDay, '最近節點');
+    var best = null, bestD = Infinity;
+    for (var i = 0; i < PHASE_NODES.length; i++) {
+      var n = PHASE_NODES[i], d = Math.abs(phaseDay - n.value);
+      if (d < bestD) { best = n; bestD = d; }
+    }
     return {
-      id: p.id, trigram: p.trigram, start: p.start, end: p.end,
-      moonBody: p.moonBody, stage: p.stage,
-      progress: (phaseDay - p.start) / (p.end - p.start)
+      node: { id: best.id, trigram: best.trigram, value: best.value,
+              moonBody: best.moonBody, label: best.label },
+      distance: bestD,
+      isNear: bestD <= NODE_TOLERANCE
     };
   }
 
-  /* 某一步大運的六個虛擬階段窗口。這是把該柱真實民用曆時長等分六份，
-     不是天文月相時刻。沿用大運半開邊界，六段無縫、不重疊。 */
+  /* 節點＋階段雙層的完整讀數。取代 V0.3 的 sixPhaseAt()——
+     那個函式回傳「S 屬於哪一卦」，而新模型認為那個問題本身是錯的。 */
+  function phaseAt(phaseDay) {
+    var st = stageAt(phaseDay), nn = nearestNodeAt(phaseDay);
+    return {
+      phaseDay: phaseDay,
+      phaseAngle: phaseDay / 30 * 360,
+      progress: phaseDay / 30,
+      stage: st,
+      nearestNode: nn.node,
+      distanceToNode: nn.distance,
+      isNearClassicalNode: nn.isNear,
+      /* UI 該印什麼：貼近節點就報單一卦名，否則報區間。
+         這只是顯示策略；判定用的永遠是 stage。 */
+      display: nn.isNear ? nn.node.trigram : st.label
+    };
+  }
+
+  /* 某一步大運的六個階段窗口。把該柱真實民用曆時長按**節點比例**切開，
+     不是等分六份，也不是天文月相時刻。沿用大運半開邊界，六段無縫、不重疊。
+
+     窗口寬度因此是 3／5／7／1／7／7 朔運日 ——十年裡對應
+     1 年／1 年 8 月／2 年 4 月／4 個月／2 年 4 月／2 年 4 月。
+     乾→巽那一段只有四個月，這正是本模型要保住的東西。 */
   function phaseWindows(dy, stepIndex) {
     if (!dy || !Array.isArray(dy.steps) || !dy.steps[stepIndex])
-      throw new RangeError('lunar_dayun.js：找不到要分六候的大運步序');
+      throw new RangeError('lunar_dayun.js：找不到要分階段的大運步序');
     var step = dy.steps[stepIndex], span = step.endAt - step.startAt;
-    return SIX_PHASES.map(function (p, i) {
-      var a = step.startAt + span * i / 6, b = step.startAt + span * (i + 1) / 6;
+    return PHASE_STAGES.map(function (g) {
+      var a = step.startAt + span * g.start / 30, b = step.startAt + span * g.end / 30;
       var al = fromWall(a), bl = fromWall(b);
+      var from = nodeById(g.from), to = nodeById(g.to);
       return {
-        id: p.id, trigram: p.trigram, start: p.start, end: p.end,
-        moonBody: p.moonBody, stage: p.stage,
+        id: g.id, start: g.start, end: g.end,
+        from: from.id, to: to.id,
+        fromTrigram: from.trigram, toTrigram: to.trigram,
+        label: from.trigram + '→' + to.trigram,
         startAt: a, endAt: b,
         startLocal: { year: al.y, month: al.m, day: al.d, hour: al.h, minute: al.mi, second: al.s },
         endLocal: { year: bl.y, month: bl.m, day: bl.d, hour: bl.h, minute: bl.mi, second: bl.s }
@@ -934,12 +1119,19 @@
     var a = i * 30 + fraction * 30;
     var s = fraction * 30;
     var whole = Math.floor(a), small = a - whole;
-    var six = sixPhaseAt(s);
+    var ph = phaseAt(s);
     return {
-      accumulatedShuo: a, phaseDay: s, phaseAngle: s / 30 * 360,
+      accumulatedShuo: a, phaseDay: s,
+      /* 這個角是「30 朔運日正規化」出來的，**不是**月球黃經差。
+         規格 §16 要求兩者分欄命名，免得有人把 96° 當成真的上弦。 */
+      lunarLuckPhaseAngle: s / 30 * 360,
+      phaseAngle: s / 30 * 360,
       elapsedYears: a / 3, cycle: Math.floor(a / 30),
       wholeShuoDays: whole, smallRemainder: small,
-      sixPhase: six, cycleStart: fraction === 0,
+      stage: ph.stage, nearestNode: ph.nearestNode,
+      distanceToNode: ph.distanceToNode, isNearClassicalNode: ph.isNearClassicalNode,
+      display: ph.display, progress: ph.progress,
+      cycleStart: fraction === 0,
       stepIndex: i, pillar: dy.steps[i].pillar, stepFraction: fraction,
       startAt: st, endAt: en
     };
@@ -954,9 +1146,12 @@
     var pos = accumulatedAt(dy, wallTime);
     if (!pos) return null;
     var windows = phaseWindows(dy, pos.stepIndex);
-    var phaseIndex = Math.floor(pos.phaseDay / 5);
-    var current = windows[phaseIndex], nextIndex = (phaseIndex + 1) % SIX_PHASES.length;
-    var crossesCycle = phaseIndex === SIX_PHASES.length - 1;
+    /* 階段序取自 stage.id 在 PHASE_STAGES 裡的位置，不用 Math.floor(S/5) 反推——
+       非等距之後那個除法本來就沒有意義了。 */
+    var phaseIndex = 0;
+    for (var q = 0; q < PHASE_STAGES.length; q++) if (PHASE_STAGES[q].id === pos.stage.id) phaseIndex = q;
+    var current = windows[phaseIndex], nextIndex = (phaseIndex + 1) % PHASE_STAGES.length;
+    var crossesCycle = phaseIndex === PHASE_STAGES.length - 1;
     var nextStepIndex = crossesCycle ? pos.stepIndex + 1 : pos.stepIndex;
     var nextStep = dy.steps[nextStepIndex] || null;
     var nl = fromWall(current.endAt), al = fromWall(wallTime);
@@ -964,12 +1159,18 @@
       wallTime: wallTime,
       local: { year: al.y, month: al.m, day: al.d, hour: al.h, minute: al.mi, second: al.s },
       stepIndex: pos.stepIndex, pillar: pos.pillar,
-      accumulatedShuo: pos.accumulatedShuo, phaseDay: pos.phaseDay, phaseAngle: pos.phaseAngle,
+      accumulatedShuo: pos.accumulatedShuo, phaseDay: pos.phaseDay,
+      phaseAngle: pos.phaseAngle, lunarLuckPhaseAngle: pos.lunarLuckPhaseAngle,
       elapsedYears: pos.elapsedYears, cycle: pos.cycle,
       wholeShuoDays: pos.wholeShuoDays, smallRemainder: pos.smallRemainder,
-      stepFraction: pos.stepFraction, sixPhase: pos.sixPhase, cycleStart: pos.cycleStart,
+      stepFraction: pos.stepFraction, cycleStart: pos.cycleStart,
+      stage: pos.stage, nearestNode: pos.nearestNode,
+      distanceToNode: pos.distanceToNode, isNearClassicalNode: pos.isNearClassicalNode,
+      display: pos.display, progress: pos.progress,
       phaseWindow: current,
-      nextPhase: sixPhaseAt(nextIndex * 5),
+      /* 下一個**節點**（不是下一個「卦區間」）：當前階段的終點就是它的 to 節點。 */
+      nextNode: nodeById(PHASE_STAGES[phaseIndex].to),
+      nextStage: PHASE_STAGES[nextIndex].id,
       nextPhaseAt: current.endAt,
       nextPhaseLocal: { year: nl.y, month: nl.m, day: nl.d, hour: nl.h, minute: nl.mi, second: nl.s },
       nextStepIndex: nextStep ? nextStepIndex : null,
@@ -1041,17 +1242,20 @@
         var s = w.startAt > effStart ? w.startAt : effStart;
         var e = w.endAt < effEnd ? w.endAt : effEnd;
         if (!(s < e)) continue;
-        var ph = sixPhaseAt(k * 5), sl = fromWall(s), el = fromWall(e);
+        var ph = PHASE_STAGES[k], sl = fromWall(s), el = fromWall(e);
+        var phFrom = nodeById(ph.from), phTo = nodeById(ph.to);
         out.segments.push({
           start: s, endExclusive: e,
           startLocal: { year: sl.y, month: sl.m, day: sl.d, hour: sl.h, minute: sl.mi, second: sl.s },
           endExclusiveLocal: { year: el.y, month: el.m, day: el.d, hour: el.h, minute: el.mi, second: el.s },
           stepIndex: i, pillar: step.pillar,
           /* 刻意不帶 progress：那是單點才有意義的量，一段區間上放 progress:0
-             會被讀成「這段從頭開始」，即使它其實是從候中間切進來的。
+             會被讀成「這段從頭開始」，即使它其實是從中間切進來的。
              真正的區間資訊在 phaseDayStart／phaseDayEnd。 */
-          sixPhase: { id: ph.id, trigram: ph.trigram, start: ph.start, end: ph.end,
-                      moonBody: ph.moonBody, stage: ph.stage },
+          stage: { id: ph.id, start: ph.start, end: ph.end,
+                   from: phFrom.id, to: phTo.id,
+                   fromTrigram: phFrom.trigram, toTrigram: phTo.trigram,
+                   label: phFrom.trigram + '→' + phTo.trigram },
           /* phaseDayEnd 可能正好等於 30（該柱最後一段的尾端）。
              那是**排他**的端點值，不是一個屬於坤候的 S；別餵給 sixPhaseAt()，
              它會依 [0,30) 的規則正確地拒絕。 */
@@ -1069,13 +1273,30 @@
      V0.3.3 只加了一個查詢函式，起運、積朔、六候的算法一個字都沒改——
      model 不動本身就是「golden values 不可能漂移」的證據。
      哪天真的動了公式（例如 Phase D 的天文真合朔），那時才換 model 名。 */
-  var API = { version: '0.3.3', calendarVersion: Cal.version, model: 'civil-new-moon-dayun-v0.3.2',
+  var API = { version: '0.4.0', calendarVersion: Cal.version,
+    model: 'civil-new-moon-dayun-v0.4',
+    /* 相位模型與起運模型分開標。起運口徑（曆日初一）沒變，
+       變的是 30 朔運日內怎麼切階段——兩者各自有版本，才說得清是哪一層動了。 */
+    phaseModel: 'cantongqi-nonuniform-v0.2',
     build: build, qiYun: qiYun, anchorFor: anchorFor, addYears: addYears, addMonths: addMonths,
     addDays: addDays, addYMD: addYMD, yearInfo: yearInfo, yearsOfStep: yearsOfStep,
     stepAt: stepAt, accumulatedAt: accumulatedAt, cursorAt: cursorAt,
     segmentsBetween: segmentsBetween,
-    sixPhaseAt: sixPhaseAt, phaseWindows: phaseWindows,
-    sixPhases: SIX_PHASES.map(function (p) { return sixPhaseAt(p.start); }),
+    phaseAt: phaseAt, stageAt: stageAt, nearestNodeAt: nearestNodeAt,
+    anchorModes: ANCHOR_MODES,
+    hasAstronomicalAnchors: !!Conj,
+    astronomicalSource: Conj ? { version: Conj.version, source: Conj.source,
+                                 accuracy: Conj.accuracy, coverage: Conj.coverage, count: Conj.count } : null,
+    phaseWindows: phaseWindows,
+    phaseNodes: PHASE_NODES.map(function (n) {
+      return { id: n.id, trigram: n.trigram, value: n.value, moonBody: n.moonBody, label: n.label };
+    }),
+    phaseStages: PHASE_STAGES.map(function (g) {
+      var a = nodeById(g.from), b = nodeById(g.to);
+      return { id: g.id, start: g.start, end: g.end, from: a.id, to: b.id,
+               fromTrigram: a.trigram, toTrigram: b.trigram, label: a.trigram + '→' + b.trigram };
+    }),
+    nodeTolerance: NODE_TOLERANCE,
     lichunAt: lichunAt, baseYear: baseYear,
     wall: wall, fromWall: fromWall, yearGZ: yearGZ };
   if (isNode) module.exports = API;
@@ -1546,7 +1767,7 @@ html.embedded #scInput>.wrap>.top{display:none}
 .lunar-six span{display:grid;place-items:center;min-height:24px;border-top:2px solid var(--line-soft);font-family:var(--serif);font-size:12px;color:var(--ink-faint)}
 .lunar-six span.on{border-color:var(--zhu-line);background:var(--band-yr);color:var(--zhu-deep)}
 .lunar-six-note{margin:5px 0 0;font-size:11.5px;line-height:1.5;color:var(--ink-soft)}
-/* 流月六候分段（V0.3.3 UI）。這是**範圍**視圖，與上方的單點游標刻意分開：
+/* 流月六候分段（V0.4 UI）。這是**範圍**視圖，與上方的單點游標刻意分開：
    它只吃盤面所選流月的節氣起訖，不吃自訂研究時刻，也不受其影響。
 
    用 <ol> 而不是自繪橫向色帶：一個流月最多切出三、四段，長短差距可以到
@@ -2517,8 +2738,10 @@ footer{text-align:center;font-size:11.5px;color:var(--ink-soft);padding:16px 6px
            不寫 localStorage，重新載入即恢復隱藏。 -->
       <div class="setting-row research-setting" id="lunarResearchSetting" hidden>
         <h2>個人研究</h2>
-        <label class="research-switch"><input type="checkbox" id="inLunarResearch"><span>月朔運 V0.3.3</span></label>
+        <label class="research-switch"><input type="checkbox" id="inLunarResearch"><span>月朔運 V0.4</span></label>
         <p class="research-note">曆日初一模型；不宣稱失傳古法，不作吉凶判斷。</p>
+        <label class="research-switch" id="inTrueShuoRow" hidden><input type="checkbox" id="inTrueShuo"><span>改用真合朔</span></label>
+        <p class="research-note" id="trueShuoNote" hidden>起運改到真合朔那一刻，不是初一那天的 00:00。干支序列相同，只有起點不同。</p>
       </div>
     </section>
 
@@ -2678,12 +2901,6 @@ footer{text-align:center;font-size:11.5px;color:var(--ink-soft);padding:16px 6px
     </div>
     <div class="lunar-compare" id="lunarCompare" hidden>
       <div id="lunarCompareBody" aria-live="polite"></div>
-      <div class="lunar-cursor-control">
-        <label for="lunarCursorAt">研究時刻</label>
-        <input type="datetime-local" id="lunarCursorAt" step="1" aria-describedby="lunarCursorHelp">
-        <button type="button" class="lunar-cursor-follow" id="lunarCursorFollow" disabled>跟隨盤面</button>
-      </div>
-      <p class="lunar-cursor-help" id="lunarCursorHelp">未自訂時，跟隨所選流日、流月起點或現在。</p>
     </div>
   </div>
 
@@ -2740,7 +2957,7 @@ var Cal=window.ZipingCal;
 var Dayun=window.ZipingDayun;
 if(!Dayun||Dayun.version!==Cal.version)throw new Error('大運引擎與排盤引擎版本不一致');
 var LunarDayun=window.ZipingLunarDayun;
-if(!LunarDayun||LunarDayun.calendarVersion!==Cal.version||LunarDayun.version!=='0.3.3')throw new Error('月朔運研究引擎與排盤引擎版本不一致');
+if(!LunarDayun||LunarDayun.calendarVersion!==Cal.version||LunarDayun.version!=='0.4.0')throw new Error('月朔運研究引擎與排盤引擎版本不一致');
 var DayunCompare=window.ZipingDayunCompare;
 if(!DayunCompare||DayunCompare.version!=='0.2')throw new Error('日月雙運比較層版本不一致');
 var GAN='甲乙丙丁戊己庚辛壬癸',ZHI='子丑寅卯辰巳午未申酉戌亥';
@@ -2857,7 +3074,7 @@ var revOrder=(function(){try{return localStorage.getItem(ORDER_KEY)==='rev';}cat
 var yearGrid=(function(){try{return localStorage.getItem(GRID_KEY)==='on';}catch(e){return false;}})();
 var gender='乾',mode='date',chart=null,lastDy=null,solarDy=null,lunarDy=null,dayunList=[],selDayun=-1,selYear=null,selMonth=null,selDay=null;
 var LUNAR_RESEARCH_KEY='199101170440',lunarResearchUnlocked=false,lunarResearchArmed=false,luckMode='solar';
-var lunarResearchCursorAt=null;
+var lunarResearchCursorAt=null,lunarAnchorAstro=false;
 
 /* ── 輸入初始化 ── */
 HOUR_PICKS.forEach(function(x){
@@ -3017,8 +3234,25 @@ el('inQuick').addEventListener('input',function(){
     +(q.hasTime?'':'（未填時間，暫用中午 12:00）')
     +(unlockLunarResearch(raw,q)?'　·　上方的個人研究設定已顯示':'');
 });
+/* 真合朔錨點（Phase D）。**預設關閉**，而且只在月朔研究勾選後才露出來——
+   它是研究層裡面的一個變體，不是與月朔運並列的第二個功能。
+   資料表沒內嵌時整列不出現，不給一個按了沒反應的開關。 */
+el('inTrueShuo').addEventListener('change',function(){
+  lunarAnchorAstro=!!this.checked;
+  /* 換錨點＝換一條時間軸，必須**重排**月朔 model，不能只重繪。
+     redrawAll() 只是把現有 model 再畫一次；我第一版就是這樣，
+     標題文字跟著變了、起運日卻沒動——看起來像有效，其實什麼都沒換。 */
+  if(!chart)return;
+  if(chart.lunarEligible)lunarDy=buildLunarDayun(chart);
+  if(luckMode==='lunar'&&lunarDy){lastDy=lunarDy;dayunList=lastDy.list;}
+  syncLuckModeBtn();redrawAll();
+});
 el('inLunarResearch').addEventListener('change',function(){
   lunarResearchArmed=lunarResearchUnlocked&&this.checked;
+  var avail=lunarResearchArmed&&!!(LunarDayun&&LunarDayun.hasAstronomicalAnchors);
+  el('inTrueShuoRow').hidden=!avail;
+  el('trueShuoNote').hidden=!avail;
+  if(!avail){el('inTrueShuo').checked=false;lunarAnchorAstro=false;}
   /* 從命盤返回輸入頁後取消勾選，也要把已存在的盤切回正式模型；
      否則瀏覽器「前進」會把舊的月朔盤帶回來，按鈕狀態卻已說是節氣運。 */
   if(!lunarResearchArmed){
@@ -3138,21 +3372,6 @@ syncOrderBtn();
 el('btnLunarMode').addEventListener('click',function(){
   activateLuckMode(luckMode==='lunar'?'solar':'lunar');
 });
-el('lunarCursorAt').addEventListener('change',function(){
-  var at=parseResearchCursor(this.value);
-  if(at==null){
-    this.setAttribute('aria-invalid','true');
-    el('lunarCursorHelp').textContent='這不是有效的民用日期時間，請重新輸入。';
-    return;
-  }
-  this.setAttribute('aria-invalid','false');
-  lunarResearchCursorAt=at;
-  renderLunarCompare();
-});
-el('lunarCursorFollow').addEventListener('click',function(){
-  lunarResearchCursorAt=null;
-  renderLunarCompare();
-});
 syncLuckModeBtn();
 /* 圈點收放。純顯示層：不碰 localStorage（那是本工具唯一寫入的東西，
    目前只存排法與矩陣偏好，不為了一個摺疊狀態再多寫一筆），
@@ -3232,7 +3451,17 @@ function buildDayun(c){
   return wrapDayun(Dayun.build(c.b,gender,ziOpts()),c,Dayun,'solar');
 }
 function buildLunarDayun(c){
-  return wrapDayun(LunarDayun.build(c.b,gender,ziOpts()),c,LunarDayun,'lunar');
+  /* 錨點模式是第四個參數。第三個是 ziOpts()（晚子時），要轉給曆法；
+     兩者不同層，刻意不合併成一個 options 物件。 */
+  var mode=lunarAnchorAstro&&LunarDayun.hasAstronomicalAnchors
+    ?LunarDayun.anchorModes.ASTRO:LunarDayun.anchorModes.CIVIL;
+  return wrapDayun(LunarDayun.build(c.b,gender,ziOpts(),mode),c,LunarDayun,'lunar');
+}
+/* 某年立春的牆鐘毫秒。直接取該年流月表的第一格——那一格的界就是立春，
+   不另寫一套節氣搜尋，兩處口徑就不可能分岔。 */
+function lichunWallOf(year){
+  var ms=buildLiuYue(year);
+  return ms&&ms[0]?wall(ms[0]):null;
 }
 /* ── 流月：立春到隔年立春，十二節為界 ── */
 function buildLiuYue(year){
@@ -3635,7 +3864,7 @@ function renderBorn(c,dy){
       }
     // 續行的 label 留空即可（.bk 有固定寬度會撐出對齊），不要用全形空格假裝。
     if(dy.kind==='lunar'){
-      s+=row('模型','月朔運 V0.3.3（曆日初一；個人研究）');
+      s+=row('模型','月朔運 V0.4（曆日初一；個人研究）');
       s+=row('',['距'+dy.qi.anchorName+'（'+dy.qi.anchorDate+'）',
                  dy.qi.gapDays+' 天 '+dy.qi.gapHours+' 時 '+dy.qi.gapMinutes+' 分'].join('　'));
       s+=row('','研究模型，不宣稱失傳古法');
@@ -3719,7 +3948,7 @@ function renderLunarStepPhases(){
      真的不是六段就什麼都不畫——寧可少一塊，也不要畫一塊我解釋不了的東西。 */
   if(res.segments.length!==6)return '';
   var rows=res.segments.map(function(s){
-    return '<li><i>'+esc(s.sixPhase.trigram)+'</i><em>'+fmtResearchCursor(s.start)+' 起</em></li>';
+    return '<li><i>'+esc(s.stage.label)+'</i><em>'+fmtResearchCursor(s.start)+' 起</em></li>';
   }).join('');
   /* data-span 讓兩塊在 DOM 上可分辨。兩者共用 .lunar-span 的樣式，
      但語義不同（一步運 vs 一個流月）——沒有標記的話，
@@ -3730,7 +3959,7 @@ function renderLunarStepPhases(){
     +'<p class="lunar-six-note">此運 '+fmtResearchCursor(st.startAt)
     +' 至 '+fmtResearchCursor(st.endAt)+'。</p></div>';
 }
-/* 流月六候分段（V0.3.3 UI）。純顯示層：只把 Engine 的 segmentsBetween()
+/* 流月六候分段（V0.4 UI）。純顯示層：只把 Engine 的 segmentsBetween()
    畫出來，不自己判斷候界，也不改主盤的大運／流年／流月／流日任何一個選取。
 
    這是**範圍**視圖，與上方的單點研究游標刻意分開：它只吃所選流月的節氣起訖，
@@ -3754,11 +3983,11 @@ function renderLunarSpan(){
     return '<div class="lunar-span" data-span="month"><p class="lunar-six-note">所選流月不在研究時間範圍內。</p></div>';
   /* 整月只在一候時就只有一段——不為了「看起來像分段」而切出第二段。
      這一句只是把「共 1 段」講成人話，沒有多畫任何東西。 */
-  var count=segs.length===1?'整月同在 '+segs[0].sixPhase.trigram+' 候':'共 '+segs.length+' 段';
+  var count=segs.length===1?'整月同在 '+segs[0].stage.label:'共 '+segs.length+' 段';
   var rows=segs.map(function(s){
     var cyc=s.startsAtCycleBoundary;
     return '<li'+(cyc?' class="cyc"':'')+'>'
-      +'<i>'+esc(s.sixPhase.trigram)+'</i>'
+      +'<i>'+esc(s.stage.label)+'</i>'
       +'<em>'+fmtResearchCursor(s.start)+' 至 '+fmtResearchCursor(s.endExclusive)+'</em>'
       +(cyc?'<small>交入 '+esc(s.pillar)+' 運</small>':'')+'</li>';
   }).join('');
@@ -3767,56 +3996,73 @@ function renderLunarSpan(){
     +'<ol class="lunar-span-list">'+rows+'</ol>'
     +'<p class="lunar-six-note">分段時刻出自研究模型，不是天文月相。</p></div>';
 }
-/* 比較層只把兩套假說並排，不選勝負。V0.3.3 預設仍跟隨盤面選取：
-   流日 > 流月起點 > 現在；只有使用者明確輸入研究時刻才改用獨立游標，
-   而且只重算研究讀數，不改主盤的大運／流年選取。 */
+/* 研究區自己的游標來源。比 selectedTimeRange() **多一級流年**。
+
+   為什麼不直接改 selectedTimeRange()：那個函式是共用的，交運帶（#handover）
+   也吃它來判斷「交前／交後」。加了流年那一級之後，只選流年時 start 會從
+   NOW_WALL 變成該年立春——交運帶立刻從「已交運」翻成「未交運」。
+   我第一版就是這樣改的，1999 那張固定例當場變紅。
+   **共用函式的語義要改，得先問清楚有誰在吃它。**
+
+   研究讀數一律**跟著下方的選取走**：流日 > 流月 > 流年 > 現在。
+   V0.4 拿掉了自訂研究時刻的輸入框（使用者裁定）——那個輸入框讓畫面同時存在
+   兩個時間狀態（自訂游標 vs 盤面選取），使用者得自己記住現在是哪一個。
+   少一個狀態就少一整類「為什麼讀數跟我點的不一樣」的問題。
+
+   同時瘦身兩塊（使用者裁定）：
+   - 積朔 A／S／相位角 θ 那一行：原始數字，人手斷運用不到，收掉。
+   - 日月雙運對照三格（節氣首運／月朔首運／起運差）：排一次盤就固定了，
+     不隨選取變化，放在會不斷重畫的區塊裡只是佔位。
+   兩者都仍在 Engine 裡，需要時從 accumulatedAt()／compare() 取得。 */
+function researchTimeRange(){
+  var r=selectedTimeRange();
+  if(r.kind!=='now'||selYear==null)return r;
+  var la=lichunWallOf(selYear),lb=lichunWallOf(selYear+1);
+  return (la!=null&&lb!=null)?{kind:'year',start:la,end:lb}:r;
+}
 function renderLunarCompare(){
-  var box=el('lunarCompare'),body=el('lunarCompareBody'),input=el('lunarCursorAt');
-  if(!box||!body||!input)return;
+  var box=el('lunarCompare'),body=el('lunarCompareBody');
+  if(!box||!body)return;
   if(!(chart&&chart.lunarEligible&&solarDy&&lunarDy&&solarDy.model&&lunarDy.model)){
     box.hidden=true;body.innerHTML='';return;
   }
-  var cmp=DayunCompare.compare(solarDy.model,lunarDy.model),delta=cmp.startDelta.days;
-  var r=selectedTimeRange(),manual=lunarResearchCursorAt!=null,at=manual?lunarResearchCursorAt:r.start;
+  var r=researchTimeRange(),at=r.start;
   var cur=DayunCompare.compareAt(solarDy.model,lunarDy.model,at);
   var phase=LunarDayun.cursorAt(lunarDy.model,at);
-  var followed=r.kind==='day'?'所選流日':r.kind==='month'?'所選流月起點':'現在';
-  var cursor=manual?'自訂研究時刻 '+fmtResearchCursor(at):followed+' '+fmtResearchCursor(at);
+  var followed=r.kind==='day'?'所選流日':r.kind==='month'?'所選流月':r.kind==='year'?'所選流年':'現在';
   var solarP=cur.solar.pillar?cur.solar.pillar+'運':'—';
   var lunarP=cur.lunar.pillar?cur.lunar.pillar+'運':'—';
-  var deltaText=(delta>0?'+':'')+compactResearchNumber(delta)+' 天';
-  var phaseText=phase
-    ?'積朔 A '+compactResearchNumber(phase.accumulatedShuo)
-      +'　·　運內 S '+compactResearchNumber(phase.phaseDay)
-      +'　·　相位角 θ '+compactResearchNumber(phase.phaseAngle)+'°'
-    :'積朔：第一步月朔運前或九步時間軸外，暫不計算';
-  var six=phase&&phase.sixPhase;
-  var nextText=phase
-    ?'下一候：'+phase.nextPhase.trigram+'　·　'+fmtResearchCursor(phase.nextPhaseAt)
+
+  /* 節點帶：七個古典節點（復震兌乾巽艮坤），不是六個等分格。
+     貼近某節點時只點亮那一個；否則點亮當前階段的兩端——
+     兩端同時亮，讀起來就是「在這兩個節點之間」，也就是「兌→乾」。 */
+  var strip='',note='';
+  if(phase){
+    var st=phase.stage,near=phase.isNearClassicalNode,nn=phase.nearestNode;
+    strip='<div class="lunar-six"><span class="sr-only">古典節點順序；目前：'+phase.display+'</span>'
+      +LunarDayun.phaseNodes.map(function(n){
+          var on=near?(n.id===nn.id):(n.id===st.from||n.id===st.to);
+          return '<span class="'+(on?'on':'')+'"'+(on?' aria-current="true"':'')+'>'+n.trigram+'</span>';
+        }).join('')+'</div>';
+    note='<p class="lunar-six-note"><b>'+esc(phase.display)+'</b>'
+      +(near?'　·　'+esc(nn.moonBody)+'　·　'+esc(nn.label)
+            :'　·　'+esc(nn.trigram)+' 前 '+compactResearchNumber(phase.distanceToNode)+' 朔運日')
+      +'　·　本運位置 '+compactResearchNumber(phase.progress*100)+'%</p>'
+      +'<p class="lunar-six-note">下一節點：'+esc(phase.nextNode.trigram)+'　·　'+fmtResearchCursor(phase.nextPhaseAt)
       +'　·　尚餘 '+researchRemaining(phase.remainingMs)
-      +(phase.nextCycleStart&&phase.nextPillar?'（同時交入 '+phase.nextPillar+' 運）':'')
-      +(phase.timelineEnd?'（九步研究時間軸終點）':'')
-    :'';
-  var sixStrip=six?'<div class="lunar-six"><span class="sr-only">六候順序；目前六候：'+six.trigram+'</span>'
-    +LunarDayun.sixPhases.map(function(p){var on=p.id===six.id;return '<span class="'+(on?'on':'')+'"'+(on?' aria-current="true"':'')+'>'+p.trigram+'</span>';}).join('')+'</div>'
-    +'<p class="lunar-six-note">六候：'+six.trigram+'　·　'+six.moonBody+'　·　階段語義：'+six.stage+'；僅作人手研究分類。</p>'
-    +'<p class="lunar-six-note">'+nextText+'</p>':'';
+      +(phase.nextCycleStart&&phase.nextPillar?'（同時交入 '+esc(phase.nextPillar)+' 運）':'')
+      +(phase.timelineEnd?'（九步研究時間軸終點）':'')+'</p>';
+  }else{
+    note='<p class="lunar-six-note">第一步月朔運前或九步時間軸外，暫不計算。</p>';
+  }
+
   box.hidden=false;
-  input.min=researchCursorValue(lunarDy.model.steps[0].startAt);
-  input.max=researchCursorValue(lunarDy.model.steps[lunarDy.model.steps.length-1].endAt-1000);
-  input.value=researchCursorValue(at);
-  input.setAttribute('aria-invalid','false');
-  el('lunarCursorFollow').disabled=!manual;
-  el('lunarCursorHelp').textContent=manual
-    ?'自訂游標只改研究讀數；按「跟隨盤面」恢復跟隨所選流日、流月起點或現在。'
-    :'目前跟隨'+followed+'；可輸入任意時刻，主盤選取不會改變。';
-  body.innerHTML='<div class="lunar-compare-head"><b>日月雙運對照 · V0.3.3</b><span>目前顯示：'+(luckMode==='lunar'?'月朔':'節氣')+'</span></div>'
-    +'<div class="lunar-compare-grid">'
-    +'<div class="lunar-compare-cell"><small>節氣首運</small><strong>'+fmtYmd(solarDy.model.firstStartLocal)+'</strong></div>'
-    +'<div class="lunar-compare-cell"><small>月朔首運</small><strong>'+fmtYmd(lunarDy.model.firstStartLocal)+'</strong></div>'
-    +'<div class="lunar-compare-cell"><small>起運差 Δ</small><strong>'+deltaText+'</strong></div></div>'
-    +'<p class="lunar-compare-now">'+cursor+'　·　節氣 '+solarP+'　／　月朔 '+lunarP+'　·　'+researchRelationLabel(cur.relation)+'</p>'
-    +'<p class="lunar-phase">'+phaseText+'；只記錄，不作吉凶判斷。</p>'+sixStrip+renderLunarStepPhases()+renderLunarSpan();
+  var anchorLabel=lunarDy.model.anchorMode===LunarDayun.anchorModes.ASTRO?'真合朔':'曆日初一';
+  body.innerHTML='<div class="lunar-compare-head"><b>月朔研究 · V0.4</b><span>'+anchorLabel
+    +'　·　目前顯示：'+(luckMode==='lunar'?'月朔':'節氣')+'</span></div>'
+    +'<p class="lunar-compare-now">'+followed+' '+fmtResearchCursor(at)
+    +'　·　節氣 '+solarP+'　／　月朔 '+lunarP+'　·　'+researchRelationLabel(cur.relation)+'</p>'
+    +strip+note+renderLunarStepPhases()+renderLunarSpan();
 }
 function renderDayun(){
   /* 欄數必須跟著實際步數走。
