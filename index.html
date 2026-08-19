@@ -724,7 +724,7 @@
 
 </script>
 <script id="paipan-lunar-dayun">
-/* 月朔運 V0.3.2（個人研究模型）。
+/* 月朔運 V0.3.3（個人研究模型）。
 
    與節氣大運共用：出生四柱、順逆、第一步大運干支、九步干支序列、固定十年運長。
    唯一改變：起運間隔不量到節，而量到前／後一個「農曆初一的民用日 00:00」。
@@ -732,8 +732,8 @@
    這是獨立引擎，不呼叫 lib/dayun.js 的 build()，也不改寫 window.ZipingDayun。
    它只依賴 lib/calendar.js 與由 tools/gen_lunar_new_moons.mjs 生成的日期表。
    V0.3 在積朔 A、運內朔運日 S、相位角 theta 之上加入六候階段；V0.3.2
-   再加入任意民用日期時間的研究游標及下一候倒數。不做天文真合朔、事件回測、
-   權重、總分或吉凶判斷。 */
+   再加入任意民用日期時間的研究游標及下一候倒數；V0.3.3 加入時間範圍分段查詢。
+   不做天文真合朔、事件回測、權重、總分或吉凶判斷。 */
 (function (g) {
   'use strict';
   var isNode = typeof module !== 'undefined' && module.exports;
@@ -981,10 +981,99 @@
     };
   }
 
-  var API = { version: '0.3.2', calendarVersion: Cal.version, model: 'civil-new-moon-dayun-v0.3.2',
+  /* V0.3.3：把單點 cursorAt() 延伸成「一段時間跨過哪些候」的純查詢。
+     供人手研究一個流月或任意區間，不記錄事件、不回測、不評分、不判吉凶。
+
+     邊界來源只有一個：phaseWindows()。這裡不重算第二套六候公式——
+     若兩處各算一次，浮點或口徑一有差異就會出現「游標說乾候、分段說巽候」
+     這種無法對帳的矛盾。
+
+     候的身分取自**窗口序 k**，不用 Math.floor(phaseDay/5) 反推。
+     （我實測過四張盤共 216 個候界，兩者零不符、邊界毫秒也都是整數，
+      所以這不是在修一個已觀察到的 bug；是因為窗口序在結構上必然正確，
+      而反推要依賴浮點除法，沒有理由選後者。）
+
+     半開區間貫徹到底：
+     - 窗口與範圍相交的條件是 w.startAt < effEnd && w.endAt > effStart，
+       所以起點正好落在候界時，上一候（endAt === effStart）自然被排除，
+       不會生出零長度的舊候段；
+     - 尾端正好落在候界時，該候（startAt === effEnd）也自然被排除，
+       因為尾端不包含。
+     兩者都不需要另寫特例。 */
+  function segmentsBetween(dy, startWallTime, endWallTimeExclusive) {
+    if (!dy || !Array.isArray(dy.steps) || !dy.steps.length)
+      throw new TypeError('lunar_dayun.js：範圍分段需要已建立的大運 model');
+    if (typeof startWallTime !== 'number' || !isFinite(startWallTime) ||
+        typeof endWallTimeExclusive !== 'number' || !isFinite(endWallTimeExclusive))
+      throw new TypeError('lunar_dayun.js：範圍起訖必須是有效牆鐘數值');
+    if (!(startWallTime < endWallTimeExclusive))
+      throw new RangeError('lunar_dayun.js：範圍必須 start < endExclusive（相同或倒置都不接受）');
+
+    var first = dy.steps[0], last = dy.steps[dy.steps.length - 1];
+    var tlStart = first.startAt, tlEnd = last.endAt;
+    var effStart = Math.max(startWallTime, tlStart);
+    var effEnd = Math.min(endWallTimeExclusive, tlEnd);
+    var out = {
+      requestedStart: startWallTime, requestedEndExclusive: endWallTimeExclusive,
+      timelineStart: tlStart, timelineEndExclusive: tlEnd,
+      clippedBeforeTimeline: startWallTime < tlStart,
+      clippedAfterTimeline: endWallTimeExclusive > tlEnd,
+      effectiveStart: null, effectiveEndExclusive: null, segments: []
+    };
+    /* 完全不相交：回空 segments，並保留 clipped 旗標說明是被前端還是後端切掉。
+       不外推不存在的柱——第一運前沒有大運，第九柱後也沒有第十柱。 */
+    if (!(effStart < effEnd)) return out;
+    out.effectiveStart = effStart;
+    out.effectiveEndExclusive = effEnd;
+
+    for (var i = stepAt(dy, effStart); i >= 0 && i < dy.steps.length; i++) {
+      var step = dy.steps[i];
+      if (step.startAt >= effEnd) break;
+      var span = step.endAt - step.startAt, wins = phaseWindows(dy, i);
+      for (var k = 0; k < wins.length; k++) {
+        var w = wins[k];
+        /* 這三道守衛互為冗餘，是刻意的——別以為其中哪一道是死碼就刪掉。
+           我逐一突變驗證過：單獨放寬任何一道，另外兩道都會接住，測試仍綠；
+           同時放寬其中兩道才會變紅。三道各自從不同方向擋住同一件事
+           （尾端排他、起點排他、零長度），留著比「精簡成一道」安全。 */
+        if (w.startAt >= effEnd) break;
+        if (w.endAt <= effStart) continue;
+        var s = w.startAt > effStart ? w.startAt : effStart;
+        var e = w.endAt < effEnd ? w.endAt : effEnd;
+        if (!(s < e)) continue;
+        var ph = sixPhaseAt(k * 5), sl = fromWall(s), el = fromWall(e);
+        out.segments.push({
+          start: s, endExclusive: e,
+          startLocal: { year: sl.y, month: sl.m, day: sl.d, hour: sl.h, minute: sl.mi, second: sl.s },
+          endExclusiveLocal: { year: el.y, month: el.m, day: el.d, hour: el.h, minute: el.mi, second: el.s },
+          stepIndex: i, pillar: step.pillar,
+          /* 刻意不帶 progress：那是單點才有意義的量，一段區間上放 progress:0
+             會被讀成「這段從頭開始」，即使它其實是從候中間切進來的。
+             真正的區間資訊在 phaseDayStart／phaseDayEnd。 */
+          sixPhase: { id: ph.id, trigram: ph.trigram, start: ph.start, end: ph.end,
+                      moonBody: ph.moonBody, stage: ph.stage },
+          /* phaseDayEnd 可能正好等於 30（該柱最後一段的尾端）。
+             那是**排他**的端點值，不是一個屬於坤候的 S；別餵給 sixPhaseAt()，
+             它會依 [0,30) 的規則正確地拒絕。 */
+          phaseDayStart: (s - step.startAt) / span * 30,
+          phaseDayEnd: (e - step.startAt) / span * 30,
+          startsAtPhaseBoundary: s === w.startAt,
+          startsAtCycleBoundary: s === step.startAt
+        });
+      }
+    }
+    return out;
+  }
+
+  /* model 刻意停在 v0.3.2：那個字串標的是**公式**，version 標的是 API。
+     V0.3.3 只加了一個查詢函式，起運、積朔、六候的算法一個字都沒改——
+     model 不動本身就是「golden values 不可能漂移」的證據。
+     哪天真的動了公式（例如 Phase D 的天文真合朔），那時才換 model 名。 */
+  var API = { version: '0.3.3', calendarVersion: Cal.version, model: 'civil-new-moon-dayun-v0.3.2',
     build: build, qiYun: qiYun, anchorFor: anchorFor, addYears: addYears, addMonths: addMonths,
     addDays: addDays, addYMD: addYMD, yearInfo: yearInfo, yearsOfStep: yearsOfStep,
     stepAt: stepAt, accumulatedAt: accumulatedAt, cursorAt: cursorAt,
+    segmentsBetween: segmentsBetween,
     sixPhaseAt: sixPhaseAt, phaseWindows: phaseWindows,
     sixPhases: SIX_PHASES.map(function (p) { return sixPhaseAt(p.start); }),
     lichunAt: lichunAt, baseYear: baseYear,
@@ -1457,6 +1546,34 @@ html.embedded #scInput>.wrap>.top{display:none}
 .lunar-six span{display:grid;place-items:center;min-height:24px;border-top:2px solid var(--line-soft);font-family:var(--serif);font-size:12px;color:var(--ink-faint)}
 .lunar-six span.on{border-color:var(--zhu-line);background:var(--band-yr);color:var(--zhu-deep)}
 .lunar-six-note{margin:5px 0 0;font-size:11.5px;line-height:1.5;color:var(--ink-soft)}
+/* 流月六候分段（V0.3.3 UI）。這是**範圍**視圖，與上方的單點游標刻意分開：
+   它只吃盤面所選流月的節氣起訖，不吃自訂研究時刻，也不受其影響。
+
+   用 <ol> 而不是自繪橫向色帶：一個流月最多切出三、四段，長短差距可以到
+   十幾比一，畫成按時長比例的橫帶會讓最短的那段窄到看不見也點不到；
+   直排每段一行，短段跟長段一樣讀得到，340px 也不會擠。
+   淡色左邊條只用來分段，不編碼吉凶，也不編碼長短。 */
+.lunar-span{margin-top:10px;padding-top:9px;border-top:1px dotted var(--line-soft)}
+.lunar-span-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:7px}
+.lunar-span-head b{font-family:var(--serif);font-size:12px;font-weight:500;letter-spacing:.06em;color:var(--zhu-deep)}
+.lunar-span-head span{font-size:10.5px;color:var(--ink-faint);white-space:nowrap}
+.lunar-span-list{list-style:none;margin:0;padding:0;display:grid;gap:5px}
+.lunar-span-list li{
+  display:grid;grid-template-columns:auto minmax(0,1fr);align-items:baseline;
+  column-gap:9px;padding-left:8px;border-left:2px solid var(--line-soft);
+}
+.lunar-span-list li.cyc{border-left-color:var(--zhu-line)}
+.lunar-span-list i{font-family:var(--serif);font-style:normal;font-size:13px;color:var(--ink)}
+.lunar-span-list em{
+  min-width:0;font-style:normal;font-size:11.5px;line-height:1.5;color:var(--ink-soft);
+  font-variant-numeric:tabular-nums;
+}
+.lunar-span-list small{grid-column:2;font-size:10.5px;line-height:1.5;color:var(--zhu-deep)}
+@media (max-width:360px){
+  /* 窄機把時刻換行到候名下方，讓「至」兩側的日期不必縮到看不清 */
+  .lunar-span-list li{grid-template-columns:minmax(0,1fr)}
+  .lunar-span-list em,.lunar-span-list small{grid-column:1}
+}
 .lunar-cursor-control{
   display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;
   margin-top:10px;padding-top:10px;border-top:1px dotted var(--line-soft);
@@ -2400,7 +2517,7 @@ footer{text-align:center;font-size:11.5px;color:var(--ink-soft);padding:16px 6px
            不寫 localStorage，重新載入即恢復隱藏。 -->
       <div class="setting-row research-setting" id="lunarResearchSetting" hidden>
         <h2>個人研究</h2>
-        <label class="research-switch"><input type="checkbox" id="inLunarResearch"><span>月朔運 V0.3.2</span></label>
+        <label class="research-switch"><input type="checkbox" id="inLunarResearch"><span>月朔運 V0.3.3</span></label>
         <p class="research-note">曆日初一模型；不宣稱失傳古法，不作吉凶判斷。</p>
       </div>
     </section>
@@ -2623,7 +2740,7 @@ var Cal=window.ZipingCal;
 var Dayun=window.ZipingDayun;
 if(!Dayun||Dayun.version!==Cal.version)throw new Error('大運引擎與排盤引擎版本不一致');
 var LunarDayun=window.ZipingLunarDayun;
-if(!LunarDayun||LunarDayun.calendarVersion!==Cal.version||LunarDayun.version!=='0.3.2')throw new Error('月朔運研究引擎與排盤引擎版本不一致');
+if(!LunarDayun||LunarDayun.calendarVersion!==Cal.version||LunarDayun.version!=='0.3.3')throw new Error('月朔運研究引擎與排盤引擎版本不一致');
 var DayunCompare=window.ZipingDayunCompare;
 if(!DayunCompare||DayunCompare.version!=='0.2')throw new Error('日月雙運比較層版本不一致');
 var GAN='甲乙丙丁戊己庚辛壬癸',ZHI='子丑寅卯辰巳午未申酉戌亥';
@@ -3518,7 +3635,7 @@ function renderBorn(c,dy){
       }
     // 續行的 label 留空即可（.bk 有固定寬度會撐出對齊），不要用全形空格假裝。
     if(dy.kind==='lunar'){
-      s+=row('模型','月朔運 V0.3.2（曆日初一；個人研究）');
+      s+=row('模型','月朔運 V0.3.3（曆日初一；個人研究）');
       s+=row('',['距'+dy.qi.anchorName+'（'+dy.qi.anchorDate+'）',
                  dy.qi.gapDays+' 天 '+dy.qi.gapHours+' 時 '+dy.qi.gapMinutes+' 分'].join('　'));
       s+=row('','研究模型，不宣稱失傳古法');
@@ -3563,7 +3680,57 @@ function researchRemaining(ms){
   var mins=Math.floor(total/60),secs=total-mins*60;
   return (days?days+' 天 ':'')+(hours?hours+' 時 ':'')+(mins?mins+' 分 ':'')+secs+' 秒';
 }
-/* 比較層只把兩套假說並排，不選勝負。V0.3.2 預設仍跟隨盤面選取：
+/* 所選流月的節氣起訖，半開。這裡刻意**不**呼叫 selectedTimeRange()——
+   那一個在選了流日時會回傳當日範圍，而分段視圖問的是「這個月跨過哪些候」，
+   不是「這一天在哪一候」。兩者混用會讓同一個畫面在點日期時偷偷換掉語義。
+   沒選到流月就回 null，由呼叫端顯示提示，不猜一個範圍出來。 */
+function selectedMonthRange(){
+  if(selYear==null||selMonth==null)return null;
+  var ms=buildLiuYue(selYear),m=ms[selMonth];
+  if(!m)return null;
+  var a=wall(m),next=ms[selMonth+1];
+  if(!next){var nx=buildLiuYue(selYear+1);next=nx&&nx[0];}
+  if(!next)return null;
+  return {start:a,end:wall(next)};
+}
+/* 流月六候分段（V0.3.3 UI）。純顯示層：只把 Engine 的 segmentsBetween()
+   畫出來，不自己判斷候界，也不改主盤的大運／流年／流月／流日任何一個選取。
+
+   這是**範圍**視圖，與上方的單點研究游標刻意分開：它只吃所選流月的節氣起訖，
+   不吃自訂研究時刻。所以這裡也**不**標「游標目前在哪一段」——
+   那會把兩個視圖混成同一個狀態，正是前手交接時點名要避免的。 */
+function renderLunarSpan(){
+  /* 只在**按下月亮、切到月朔運之後**才出現（2026-08-19 使用者裁定）。
+
+     上方的六候帶、積朔三數、下一候倒數在節氣模式下也看得到，這一段刻意不跟它們一致：
+     那幾項講的是「這張命盤的月朔讀數」，屬於對照；而分段講的是
+     「這個月**在月朔運裡**跨過哪些候」，是月朔運自己的盤面內容。
+     主盤還顯示節氣運時把它擺出來，等於在節氣盤上寫月朔運的柱與候，會誤導。 */
+  if(luckMode!=='lunar')return '';
+  if(!(lunarDy&&lunarDy.model))return '';
+  var r=selectedMonthRange();
+  if(!r)return '<div class="lunar-span"><p class="lunar-six-note">未選流月，暫不分段。點流年下方的月份即可。</p></div>';
+  var res;
+  try{res=LunarDayun.segmentsBetween(lunarDy.model,r.start,r.end);}catch(e){return '';}
+  var segs=res.segments;
+  if(!segs.length)
+    return '<div class="lunar-span"><p class="lunar-six-note">所選流月不在研究時間範圍內。</p></div>';
+  /* 整月只在一候時就只有一段——不為了「看起來像分段」而切出第二段。
+     這一句只是把「共 1 段」講成人話，沒有多畫任何東西。 */
+  var count=segs.length===1?'整月同在 '+segs[0].sixPhase.trigram+' 候':'共 '+segs.length+' 段';
+  var rows=segs.map(function(s){
+    var cyc=s.startsAtCycleBoundary;
+    return '<li'+(cyc?' class="cyc"':'')+'>'
+      +'<i>'+esc(s.sixPhase.trigram)+'</i>'
+      +'<em>'+fmtResearchCursor(s.start)+' 至 '+fmtResearchCursor(s.endExclusive)+'</em>'
+      +(cyc?'<small>交入 '+esc(s.pillar)+' 運</small>':'')+'</li>';
+  }).join('');
+  return '<div class="lunar-span">'
+    +'<div class="lunar-span-head"><b>所選流月 · 六候分段</b><span>'+count+'</span></div>'
+    +'<ol class="lunar-span-list">'+rows+'</ol>'
+    +'<p class="lunar-six-note">分段時刻出自研究模型，不是天文月相。</p></div>';
+}
+/* 比較層只把兩套假說並排，不選勝負。V0.3.3 預設仍跟隨盤面選取：
    流日 > 流月起點 > 現在；只有使用者明確輸入研究時刻才改用獨立游標，
    而且只重算研究讀數，不改主盤的大運／流年選取。 */
 function renderLunarCompare(){
@@ -3606,13 +3773,13 @@ function renderLunarCompare(){
   el('lunarCursorHelp').textContent=manual
     ?'自訂游標只改研究讀數；按「跟隨盤面」恢復跟隨所選流日、流月起點或現在。'
     :'目前跟隨'+followed+'；可輸入任意時刻，主盤選取不會改變。';
-  body.innerHTML='<div class="lunar-compare-head"><b>日月雙運對照 · V0.3.2</b><span>目前顯示：'+(luckMode==='lunar'?'月朔':'節氣')+'</span></div>'
+  body.innerHTML='<div class="lunar-compare-head"><b>日月雙運對照 · V0.3.3</b><span>目前顯示：'+(luckMode==='lunar'?'月朔':'節氣')+'</span></div>'
     +'<div class="lunar-compare-grid">'
     +'<div class="lunar-compare-cell"><small>節氣首運</small><strong>'+fmtYmd(solarDy.model.firstStartLocal)+'</strong></div>'
     +'<div class="lunar-compare-cell"><small>月朔首運</small><strong>'+fmtYmd(lunarDy.model.firstStartLocal)+'</strong></div>'
     +'<div class="lunar-compare-cell"><small>起運差 Δ</small><strong>'+deltaText+'</strong></div></div>'
     +'<p class="lunar-compare-now">'+cursor+'　·　節氣 '+solarP+'　／　月朔 '+lunarP+'　·　'+researchRelationLabel(cur.relation)+'</p>'
-    +'<p class="lunar-phase">'+phaseText+'；只記錄，不作吉凶判斷。</p>'+sixStrip;
+    +'<p class="lunar-phase">'+phaseText+'；只記錄，不作吉凶判斷。</p>'+sixStrip+renderLunarSpan();
 }
 function renderDayun(){
   /* 欄數必須跟著實際步數走。
