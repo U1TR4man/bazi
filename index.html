@@ -2547,10 +2547,15 @@ function renderChart(c){
      這是七欄交界盤，不是七柱同時生效。首運沒有前一柱，絕不虛構干支補位。 */
   var hx=selYear==null?null:transitionForYear(selYear);
   if(hx){
-    var crossed=hx.transitionAt!=null&&hx.transitionAt<=NOW_WALL;
-    if(crossed){
+    var hv=selectedHandoverState(hx);
+    if(hv.phase==='after'){
       if(hx.dayunAtStart)transits.push({label:'交前',sub:'參照',gz:hx.dayunAtStart,role:'handover-before'});
       if(hx.transitionTo)transits.push({label:'交後',sub:'生效',gz:hx.transitionTo,role:'handover-after'});
+    }else if(hv.phase==='span'){
+      /* 只選流月時，交運月本身是一段跨界區間，沒有單一「生效柱」。
+         前後兩柱平級呈現並直接標示月內前／後段；點到流日後才精確決定哪柱生效。 */
+      if(hx.dayunAtStart)transits.push({label:'交前',sub:'月內前段',gz:hx.dayunAtStart});
+      if(hx.transitionTo)transits.push({label:'交後',sub:'月內後段',gz:hx.transitionTo});
     }else if(hx.dayunAtStart){
       transits.push({label:'大運',gz:hx.dayunAtStart});
     }
@@ -2594,6 +2599,38 @@ function currentTransit(){
     }
   }
   return out;
+}
+/* 交運柱不能只問「今天過了沒有」：研究未來交運年時，使用者已經用流月／流日
+   指定了盤面時點。選取優先序為流日 > 流月區間 > 今天。
+
+   - 流日按該日 00:00 起算；大運引擎本來就只精確到日，交運日 00:00 起屬新運。
+   - 流月按「節」的真實秒級起訖；若交運落在月內，整月本身橫跨兩運，回傳 span。
+   - 只選流年時沒有更細時點，維持以今天判定，避免擅自替整年指定一個日期。 */
+function selectedTimeRange(){
+  if(selYear!=null&&selMonth!=null){
+    if(selDay!=null){
+      var ds=buildLiuRi(selYear,selMonth),d=ds[selDay];
+      if(d){
+        var da=wall({y:d.y,m:d.m,d:d.d,h:0,mi:0,s:0});
+        return {kind:'day',start:da,end:da+86400000};
+      }
+    }
+    var ms=buildLiuYue(selYear),m=ms[selMonth];
+    if(m){
+      var ma=wall(m),next=ms[selMonth+1];
+      if(!next){var nx=buildLiuYue(selYear+1);next=nx[0];}
+      return {kind:'month',start:ma,end:next?wall(next):ma+32*86400000};
+    }
+  }
+  return {kind:'now',start:NOW_WALL,end:NOW_WALL};
+}
+function selectedHandoverState(x){
+  var r=selectedTimeRange(),t=x&&x.transitionAt;
+  if(t==null)return {phase:'before',range:r};
+  /* 半開區間：[start,end)。整段在交運前／後可直接裁定；只有流月可能 span。
+     end===t 表示選取區間恰在交運 00:00 結束，仍全屬交前；start===t 則全屬交後。 */
+  var phase=r.start>=t?'after':r.end<=t?'before':'span';
+  return {phase:phase,range:r};
 }
 /* 以立春為界的十個流年。**矩陣一律用這一份**——90 格與大運列的欄軌
    靠「每欄剛好十格」對齊，多一格就錯位。 */
@@ -2685,19 +2722,22 @@ function renderHandover(){
   var box=el('handover'),x=selYear==null?null:transitionForYear(selYear);
   if(!x){box.hidden=true;box.innerHTML='';return;}
   var first=!!(lastDy&&lastDy.model&&lastDy.model.steps[0]&&x.transitionAt===lastDy.model.steps[0].startAt);
-  var past=x.transitionAt!=null&&x.transitionAt<=NOW_WALL;
+  var hv=selectedHandoverState(x),phase=hv.phase;
   var start=Dayun.fromWall(x.startAt),end=Dayun.fromWall(x.endAt);
   var beforeEnd=Dayun.fromWall(x.transitionAt-86400000);
   var before=x.dayunAtStart?x.dayunAtStart+'運':'未交大運';
   var after=x.transitionTo+'運',kind=first?'起運流年':'交運流年';
-  var state=past?'已交運':'將交運';
+  var state=hv.range.kind==='now'?(phase==='before'?'將交運':'已交運'):
+    hv.range.kind==='day'?'所選流日 · '+(phase==='before'?'交運前':'交運後'):
+    '所選流月 · '+(phase==='before'?'交運前':phase==='after'?'交運後':'月內交運');
+  var oldOn=phase!=='after',newOn=phase!=='before';
   box.hidden=false;
   box.innerHTML='<div class="handover-head"><span class="handover-kind">'+kind+'</span>'
     +'<b>'+selYear+' '+yearGZ(selYear)+'</b><em>'+state+' · '+fmtYmd(x.transitionLocal)+'</em></div>'
     +'<div class="handover-track">'
-    +'<div class="handover-part handover-old '+(past?'handover-inactive':'handover-active')+'"><small>立春 '+fmtMd(start)+'–'+fmtMd(beforeEnd)+'</small><strong>'+before+'</strong></div>'
+    +'<div class="handover-part handover-old '+(oldOn?'handover-active':'handover-inactive')+'"><small>立春 '+fmtMd(start)+'–'+fmtMd(beforeEnd)+'</small><strong>'+before+'</strong></div>'
     +'<div class="handover-knot"><span>'+fmtMd(x.transitionLocal)+'</span><b>交</b></div>'
-    +'<div class="handover-part handover-new '+(past?'handover-active':'handover-inactive')+'"><small>'+fmtMd(x.transitionLocal)+'–下年立春 '+fmtMd(end)+'</small><strong>'+after+'</strong></div></div>'
+    +'<div class="handover-part handover-new '+(newOn?'handover-active':'handover-inactive')+'"><small>'+fmtMd(x.transitionLocal)+'–下年立春 '+fmtMd(end)+'</small><strong>'+after+'</strong></div></div>'
     +'<p class="handover-note">交運日當天起以交後大運為準；下一個流年只顯示交後大運。</p>';
 }
 function renderBorn(c,dy){
