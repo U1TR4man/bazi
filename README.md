@@ -77,8 +77,9 @@
 | `icons/*` | `tools/make_paipan_icons.py` |
 | 曆法與大運 | `lib/calendar.js`、`lib/solar_terms.js`、`lib/dayun.js` |
 
-預設隱藏的月朔運個人研究層另由 `lib/lunar_new_moons.js` 與 `lib/lunar_dayun.js` 提供；
-它不改正常節氣運，口徑與回滾邊界見母專案 `docs/月朔運V0.1狀態.md`。
+預設隱藏的月朔運 V0.2 個人研究層另由 `lib/lunar_new_moons.js`、`lib/lunar_dayun.js`
+與 `lib/dayun_compare.js` 提供；它不改正常節氣運，只記錄雙起運差與積朔 `A / S / theta`，
+口徑與回滾邊界見母專案 `docs/月朔運V0.2狀態.md`。
 
 改完跑 `python3 tools/build_paipan.py`，再把這個資料夾 push 上去。
 
