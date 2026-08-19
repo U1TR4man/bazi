@@ -8,7 +8,7 @@
  *   圖示／manifest → cache-first：內容不會變，每次上網拿只是浪費。
  * 單檔自含的副作用是這裡沒有字型或 JS 要快取——它們全都在 index.html 裡面。
  */
-const CACHE = 'bazi-app-v2.3.0';   // 2.3.0：月朔運 V0.2 加入雙起運比較與只記錄的積朔 A／S／theta
+const CACHE = 'bazi-app-v2.5.0';   // 2.5.0：月朔運 V0.3.2 任意研究時刻與下一候倒數
 const CORE = ['./', './index.html', './manifest.webmanifest',
               './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 
